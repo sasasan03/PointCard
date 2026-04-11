@@ -28,7 +28,6 @@ struct ContentView: View {
                 VStack(spacing: 24) {
                     titleSection
                     pointCardSection
-                    usageSection
                 }
                 .frame(maxWidth: 560)
                 .padding(.horizontal, 20)
@@ -79,11 +78,6 @@ struct ContentView: View {
                 Capsule(style: .continuous)
                     .stroke(PointCardPalette.secondary, lineWidth: 2)
             )
-
-            Text("がんばったらほしがもらえるよ")
-                .font(.system(size: 20, weight: .medium, design: .rounded))
-                .foregroundStyle(PointCardPalette.mutedForeground)
-                .multilineTextAlignment(.center)
         }
     }
 
@@ -96,34 +90,6 @@ struct ContentView: View {
             pulseNextPoint: pulseNextPoint,
             onPointTap: addPoint,
             onReset: resetPoints
-        )
-    }
-
-    private var usageSection: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 10) {
-                Text("📖")
-                    .font(.system(size: 26))
-                Text("つかいかた")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(PointCardPalette.foreground)
-            }
-
-            VStack(spacing: 14) {
-                InstructionRow(number: 1, text: "がんばったら、ひかっているところをタップ！")
-                InstructionRow(number: 2, text: "ほしがふえるよ！")
-                InstructionRow(number: 3, text: "ぜんぶあつめたら、すてきなことがあるかも！")
-            }
-        }
-        .padding(22)
-        .background(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(PointCardPalette.card)
-                .shadow(color: .black.opacity(0.08), radius: 18, x: 0, y: 10)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(PointCardPalette.border, lineWidth: 2)
         )
     }
 
@@ -209,11 +175,10 @@ private struct PointCardView: View {
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                         Text("キラキラカード")
                             .font(.system(size: 28, weight: .heavy, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.78)
+                            .allowsTightening(true)
                     }
-
-                    Text("がんばったらもらえるよ")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .opacity(0.82)
                 }
                 .foregroundStyle(.white)
 
@@ -376,7 +341,7 @@ private struct PointCardView: View {
                 Capsule(style: .continuous)
                     .fill(
                         LinearGradient(
-                            colors: [PointCardPalette.primary, PointCardPalette.accent],
+                            colors: [Color.yellow, Color.pink],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
@@ -397,18 +362,6 @@ private struct PointCardView: View {
 
     private var footer: some View {
         HStack {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(PointCardPalette.accent)
-                    .frame(width: 12, height: 12)
-                Circle()
-                    .fill(PointCardPalette.primary)
-                    .frame(width: 12, height: 12)
-                Circle()
-                    .fill(PointCardPalette.secondary)
-                    .frame(width: 12, height: 12)
-            }
-
             Spacer()
 
             Button("リセット") {
@@ -578,15 +531,15 @@ private struct BackgroundDecorations: View {
 }
 
 private enum PointCardPalette {
-    static let background = Color(red: 0.985, green: 0.972, blue: 0.915)
-    static let foreground = Color(red: 0.275, green: 0.220, blue: 0.365)
+    static let background = Color(red: 0.996, green: 0.955, blue: 0.878)
+    static let foreground = Color(red: 0.345, green: 0.231, blue: 0.137)
     static let card = Color.white
-    static let primary = Color(red: 0.352, green: 0.733, blue: 0.474)
-    static let secondary = Color(red: 0.953, green: 0.847, blue: 0.529)
-    static let accent = Color(red: 0.949, green: 0.553, blue: 0.333)
-    static let muted = Color(red: 0.945, green: 0.925, blue: 0.875)
-    static let mutedForeground = Color(red: 0.555, green: 0.500, blue: 0.635)
-    static let border = Color(red: 0.914, green: 0.875, blue: 0.780)
+    static let primary = Color(red: 0.925, green: 0.494, blue: 0.196)
+    static let secondary = Color(red: 0.984, green: 0.835, blue: 0.369)
+    static let accent = Color(red: 0.965, green: 0.663, blue: 0.216)
+    static let muted = Color(red: 0.984, green: 0.931, blue: 0.840)
+    static let mutedForeground = Color(red: 0.600, green: 0.455, blue: 0.314)
+    static let border = Color(red: 0.953, green: 0.847, blue: 0.659)
 }
 
 struct ContentView_Previews: PreviewProvider {
