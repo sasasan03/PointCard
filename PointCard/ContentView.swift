@@ -5,6 +5,7 @@
 //  Created by sako0602 on 2026/04/11.
 //
 
+import LocalAuthentication
 import SwiftUI
 
 struct ContentView: View {
@@ -12,6 +13,9 @@ struct ContentView: View {
     @State private var showCelebration = false
     @State private var lastTappedIndex: Int?
     @State private var pulseNextPoint = false
+    @State private var isAuthenticating = false
+    @State private var showAuthenticationAlert = false
+    @State private var authenticationAlertMessage = ""
 
     private let studentName = "たろう"
     private let maxPoints = 10
@@ -49,6 +53,11 @@ struct ContentView: View {
             withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
                 pulseNextPoint = true
             }
+        }
+        .alert("ロック解除できませんでした", isPresented: $showAuthenticationAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(authenticationAlertMessage)
         }
     }
 
@@ -88,14 +97,37 @@ struct ContentView: View {
             maxPoints: maxPoints,
             lastTappedIndex: lastTappedIndex,
             pulseNextPoint: pulseNextPoint,
+            isAuthenticating: isAuthenticating,
             onPointTap: addPoint,
             onReset: resetPoints
         )
     }
 
     private func addPoint(_ index: Int) {
-        guard index == points, points < maxPoints else { return }
+        guard index == points, points < maxPoints, !isAuthenticating else { return }
 
+        isAuthenticating = true
+
+        Task {
+            let result = await authenticateForNextPoint()
+
+            await MainActor.run {
+                isAuthenticating = false
+
+                switch result {
+                case .success:
+                    applyPoint(at: index)
+                case .cancelled:
+                    break
+                case .failure(let message):
+                    authenticationAlertMessage = message
+                    showAuthenticationAlert = true
+                }
+            }
+        }
+    }
+
+    private func applyPoint(at index: Int) {
         lastTappedIndex = index
 
         withAnimation(.spring(response: 0.34, dampingFraction: 0.7)) {
@@ -120,8 +152,73 @@ struct ContentView: View {
             points = 0
             showCelebration = false
             lastTappedIndex = nil
+            isAuthenticating = false
         }
     }
+
+    private func authenticateForNextPoint() async -> PointAuthenticationResult {
+        let context = LAContext()
+        context.localizedCancelTitle = "キャンセル"
+
+        var error: NSError?
+        let reason = "ポイントの星をつけるためにロックを解除してください。"
+
+        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
+            return .failure(authenticationFailureMessage(for: error))
+        }
+
+        return await withCheckedContinuation { continuation in
+            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, authError in
+                if success {
+                    continuation.resume(returning: .success)
+                    return
+                }
+
+                if let laError = authError as? LAError {
+                    switch laError.code {
+                    case .userCancel, .appCancel, .systemCancel:
+                        continuation.resume(returning: .cancelled)
+                        return
+                    default:
+                        break
+                    }
+                }
+
+                continuation.resume(returning: .failure(authenticationFailureMessage(for: authError)))
+            }
+        }
+    }
+
+    private func authenticationFailureMessage(for error: Error?) -> String {
+        guard let laError = error as? LAError else {
+            return "ロック解除に失敗しました。もういちどためしてください。"
+        }
+
+        switch laError.code {
+        case .authenticationFailed:
+            return "ロック解除に失敗しました。もういちどためしてください。"
+        case .passcodeNotSet:
+            return "この iPhone ではパスコードが設定されていません。設定アプリでパスコードを有効にしてください。"
+        case .biometryNotAvailable:
+            return "この iPhone では Face ID または Touch ID が使えません。"
+        case .biometryNotEnrolled:
+            return "Face ID または Touch ID が未設定です。設定アプリで登録してください。"
+        case .biometryLockout:
+            return "生体認証がロックされています。パスコードで解除してからもういちど試してください。"
+        case .invalidContext:
+            return "認証の準備に失敗しました。もういちどためしてください。"
+        case .notInteractive:
+            return "この状態ではロック解除画面を表示できません。"
+        default:
+            return "ロック解除できませんでした。もういちどためしてください。"
+        }
+    }
+}
+
+private enum PointAuthenticationResult {
+    case success
+    case cancelled
+    case failure(String)
 }
 
 private struct PointCardView: View {
@@ -130,6 +227,7 @@ private struct PointCardView: View {
     let maxPoints: Int
     let lastTappedIndex: Int?
     let pulseNextPoint: Bool
+    let isAuthenticating: Bool
     let onPointTap: (Int) -> Void
     let onReset: () -> Void
 
@@ -281,7 +379,7 @@ private struct PointCardView: View {
                         )
                     }
                     .buttonStyle(.plain)
-                    .disabled(!isNext)
+                    .disabled(!isNext || isAuthenticating)
                 }
             }
 
@@ -300,9 +398,9 @@ private struct PointCardView: View {
                 .scaleEffect(isJustTapped ? 1.18 : 1.0)
                 .rotationEffect(.degrees(isJustTapped ? -6 : 0))
         } else if isNext {
-            Text("+")
-                .font(.system(size: 30, weight: .bold, design: .rounded))
-                .foregroundStyle(PointCardPalette.mutedForeground.opacity(0.6))
+            Image(systemName: isAuthenticating ? "lock.rotation" : "lock.fill")
+                .font(.system(size: 28, weight: .bold))
+                .foregroundStyle(PointCardPalette.primary.opacity(0.8))
         } else {
             Circle()
                 .fill(.white.opacity(0.55))
@@ -312,8 +410,11 @@ private struct PointCardView: View {
 
     private var messageSection: some View {
         Group {
-            if points == 0 {
-                Text("さいしょのほしをタップしよう！")
+            if isAuthenticating {
+                Text("ロック解除をまっています...")
+                    .foregroundStyle(PointCardPalette.primary)
+            } else if points == 0 {
+                Text("タップしてロックを解除しよう！")
                     .foregroundStyle(PointCardPalette.mutedForeground)
             } else if points < maxPoints {
                 Text(
