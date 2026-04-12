@@ -14,7 +14,9 @@ struct SettingView: View {
     @Binding var studentName: String
     @Binding var selectedStampItem: PhotosPickerItem?
     @Binding var stampImage: UIImage?
+    @State private var showResetPointsAlert = false
     let isLoadingStampImage: Bool
+    let onResetPoints: () -> Void
 
     var body: some View {
         Form {
@@ -55,9 +57,24 @@ struct SettingView: View {
                     }
                 }
             }
+
+            Section("ポイント") {
+                Button("ポイントをリセット", role: .destructive) {
+                    showResetPointsAlert = true
+                }
+                .font(.system(size: 17, weight: .semibold, design: .rounded))
+            }
         }
         .navigationTitle("設定")
         .navigationBarTitleDisplayMode(.inline)
+        .alert("ポイントをリセットしますか？", isPresented: $showResetPointsAlert) {
+            Button("キャンセル", role: .cancel) {}
+            Button("リセット", role: .destructive) {
+                onResetPoints()
+            }
+        } message: {
+            Text("今までのポイントがすべて消えます。")
+        }
     }
 }
 
@@ -123,7 +140,8 @@ private struct SettingViewPreviewContainer: View {
                 studentName: $studentName,
                 selectedStampItem: $selectedStampItem,
                 stampImage: $stampImage,
-                isLoadingStampImage: isLoadingStampImage
+                isLoadingStampImage: isLoadingStampImage,
+                onResetPoints: {}
             )
         }
     }

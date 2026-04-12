@@ -65,7 +65,8 @@ struct ContentView: View {
                             studentName: $studentName,
                             selectedStampItem: $selectedStampItem,
                             stampImage: $stampImage,
-                            isLoadingStampImage: isLoadingStampImage
+                            isLoadingStampImage: isLoadingStampImage,
+                            onResetPoints: resetPoints
                         )
                     } label: {
                         Image(systemName: "gearshape.fill")
@@ -133,8 +134,7 @@ struct ContentView: View {
             pulseNextPoint: pulseNextPoint,
             isAuthenticating: isAuthenticating,
             stampImage: stampImage,
-            onPointTap: addPoint,
-            onReset: resetPoints
+            onPointTap: addPoint
         )
     }
 
@@ -298,7 +298,6 @@ private struct PointCardView: View {
     let isAuthenticating: Bool
     let stampImage: UIImage?
     let onPointTap: (Int) -> Void
-    let onReset: () -> Void
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 5)
 
@@ -306,7 +305,6 @@ private struct PointCardView: View {
         VStack(spacing: 0) {
             nameSection
             pointsSection
-            footer
         }
         .background(
             RoundedRectangle(cornerRadius: 32, style: .continuous)
@@ -490,31 +488,6 @@ private struct PointCardView: View {
             }
         }
         .frame(height: 24)
-    }
-
-    private var footer: some View {
-        HStack {
-            Spacer()
-
-            Button("リセット") {
-                onReset()
-            }
-            .buttonStyle(.plain)
-            .font(.system(size: 16, weight: .semibold, design: .rounded))
-            .foregroundStyle(PointCardPalette.mutedForeground)
-        }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 18)
-        .background(PointCardPalette.muted.opacity(0.75))
-        .clipShape(
-            UnevenRoundedRectangle(
-                topLeadingRadius: 0,
-                bottomLeadingRadius: 28,
-                bottomTrailingRadius: 28,
-                topTrailingRadius: 0,
-                style: .continuous
-            )
-        )
     }
 
     private func backgroundColor(isEarned: Bool, isNext: Bool) -> Color {
