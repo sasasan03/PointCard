@@ -22,8 +22,8 @@ struct ContentView: View {
     @State private var stampImage: UIImage?
     @State private var isLoadingStampImage = false
     @State private var cardTitle = "ポイントカード"
+    @State private var studentName = "たろう"
 
-    private let studentName = "たろう"
     private let maxPoints = 10
 
     var body: some View {
@@ -62,6 +62,7 @@ struct ContentView: View {
                     NavigationLink {
                         SettingView(
                             cardTitle: $cardTitle,
+                            studentName: $studentName,
                             selectedStampItem: $selectedStampItem,
                             stampImage: $stampImage,
                             isLoadingStampImage: isLoadingStampImage
@@ -125,7 +126,7 @@ struct ContentView: View {
 
     private var pointCardSection: some View {
         PointCardView(
-            studentName: studentName,
+            studentName: displayStudentName,
             points: points,
             maxPoints: maxPoints,
             lastTappedIndex: lastTappedIndex,
@@ -140,6 +141,11 @@ struct ContentView: View {
     private var displayCardTitle: String {
         let trimmedTitle = cardTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmedTitle.isEmpty ? "ポイントカード" : trimmedTitle
+    }
+
+    private var displayStudentName: String {
+        let trimmedName = studentName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedName.isEmpty ? "たろう" : trimmedName
     }
 
     private func addPoint(_ index: Int) {

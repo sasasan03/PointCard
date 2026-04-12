@@ -11,6 +11,7 @@ import UIKit
 
 struct SettingView: View {
     @Binding var cardTitle: String
+    @Binding var studentName: String
     @Binding var selectedStampItem: PhotosPickerItem?
     @Binding var stampImage: UIImage?
     let isLoadingStampImage: Bool
@@ -19,6 +20,11 @@ struct SettingView: View {
         Form {
             Section("ポイントカード") {
                 TextField("ポイントカード", text: $cardTitle)
+                    .font(.system(size: 17, weight: .medium, design: .rounded))
+            }
+
+            Section("なまえ") {
+                TextField("たろう", text: $studentName)
                     .font(.system(size: 17, weight: .medium, design: .rounded))
             }
 
@@ -99,6 +105,7 @@ private struct StampSettingPreview: View {
 
 private struct SettingViewPreviewContainer: View {
     @State private var cardTitle = "ポイントカード"
+    @State private var studentName = "たろう"
     @State private var selectedStampItem: PhotosPickerItem?
     @State private var stampImage: UIImage?
 
@@ -113,6 +120,7 @@ private struct SettingViewPreviewContainer: View {
         NavigationStack {
             SettingView(
                 cardTitle: $cardTitle,
+                studentName: $studentName,
                 selectedStampItem: $selectedStampItem,
                 stampImage: $stampImage,
                 isLoadingStampImage: isLoadingStampImage
