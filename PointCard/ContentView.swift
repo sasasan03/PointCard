@@ -6,6 +6,7 @@
 //
 
 import LocalAuthentication
+import PhotosUI
 import SwiftUI
 
 struct ContentView: View {
@@ -14,39 +15,62 @@ struct ContentView: View {
     @State private var lastTappedIndex: Int?
     @State private var pulseNextPoint = false
     @State private var isAuthenticating = false
-    @State private var showAuthenticationAlert = false
-    @State private var authenticationAlertMessage = ""
+    @State private var showAlert = false
+    @State private var alertTitle = ""
+    @State private var alertMessage = ""
+    @State private var selectedStampItem: PhotosPickerItem?
+    @State private var stampImage: UIImage?
+    @State private var isLoadingStampImage = false
 
     private let studentName = "たろう"
     private let maxPoints = 10
 
     var body: some View {
-        ZStack {
-            PointCardPalette.background
-                .ignoresSafeArea()
+        NavigationStack {
+            ZStack {
+                PointCardPalette.background
+                    .ignoresSafeArea()
 
-            BackgroundDecorations()
-                .ignoresSafeArea()
+                BackgroundDecorations()
+                    .ignoresSafeArea()
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    titleSection
-                    pointCardSection
-                }
-                .frame(maxWidth: 560)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 28)
-            }
-
-            if showCelebration {
-                CelebrationOverlay {
-                    withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) {
-                        showCelebration = false
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 24) {
+                        titleSection
+                        pointCardSection
                     }
-                } resetAction: {
-                    resetPoints()
+                    .frame(maxWidth: 560)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 28)
                 }
-                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+
+                if showCelebration {
+                    CelebrationOverlay {
+                        withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) {
+                            showCelebration = false
+                        }
+                    } resetAction: {
+                        resetPoints()
+                    }
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        SettingView(
+                            selectedStampItem: $selectedStampItem,
+                            stampImage: $stampImage,
+                            isLoadingStampImage: isLoadingStampImage
+                        )
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(PointCardPalette.primary)
+                    }
+                    .accessibilityLabel("設定")
+                }
             }
         }
         .onAppear {
@@ -54,10 +78,17 @@ struct ContentView: View {
                 pulseNextPoint = true
             }
         }
-        .alert("ロック解除できませんでした", isPresented: $showAuthenticationAlert) {
+        .onChange(of: selectedStampItem) { _, newItem in
+            guard let newItem else { return }
+
+            Task {
+                await loadStampImage(from: newItem)
+            }
+        }
+        .alert(alertTitle, isPresented: $showAlert) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text(authenticationAlertMessage)
+            Text(alertMessage)
         }
     }
 
@@ -98,6 +129,7 @@ struct ContentView: View {
             lastTappedIndex: lastTappedIndex,
             pulseNextPoint: pulseNextPoint,
             isAuthenticating: isAuthenticating,
+            stampImage: stampImage,
             onPointTap: addPoint,
             onReset: resetPoints
         )
@@ -120,8 +152,9 @@ struct ContentView: View {
                 case .cancelled:
                     break
                 case .failure(let message):
-                    authenticationAlertMessage = message
-                    showAuthenticationAlert = true
+                    alertTitle = "ロック解除できませんでした"
+                    alertMessage = message
+                    showAlert = true
                 }
             }
         }
@@ -213,12 +246,74 @@ struct ContentView: View {
             return "ロック解除できませんでした。もういちどためしてください。"
         }
     }
+
+    @MainActor
+    private func loadStampImage(from item: PhotosPickerItem) async {
+        isLoadingStampImage = true
+        defer { isLoadingStampImage = false }
+
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let uiImage = UIImage(data: data) else {
+                alertTitle = "画像を読み込めませんでした"
+                alertMessage = "写真アプリの画像をもういちど選びなおしてください。"
+                showAlert = true
+                return
+            }
+
+            stampImage = uiImage
+        } catch {
+            alertTitle = "画像を読み込めませんでした"
+            alertMessage = "スタンプ画像の取得に失敗しました。もういちどためしてください。"
+            showAlert = true
+        }
+    }
 }
 
 private enum PointAuthenticationResult {
     case success
     case cancelled
     case failure(String)
+}
+
+private struct SettingView: View {
+    @Binding var selectedStampItem: PhotosPickerItem?
+    @Binding var stampImage: UIImage?
+    let isLoadingStampImage: Bool
+
+    var body: some View {
+        Form {
+            Section("スタンプ画像") {
+                VStack(spacing: 16) {
+                    StampSettingPreview(
+                        stampImage: stampImage,
+                        isLoading: isLoadingStampImage
+                    )
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+
+                    Text("スタンプに使う画像を写真アプリから選べます。")
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .foregroundStyle(PointCardPalette.mutedForeground)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+
+                PhotosPicker(selection: $selectedStampItem, matching: .images) {
+                    Label("写真から選ぶ", systemImage: "photo.on.rectangle.angled")
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                }
+
+                if stampImage != nil {
+                    Button("画像をリセット", role: .destructive) {
+                        stampImage = nil
+                        selectedStampItem = nil
+                    }
+                }
+            }
+        }
+        .navigationTitle("設定")
+        .navigationBarTitleDisplayMode(.inline)
+    }
 }
 
 private struct PointCardView: View {
@@ -228,6 +323,7 @@ private struct PointCardView: View {
     let lastTappedIndex: Int?
     let pulseNextPoint: Bool
     let isAuthenticating: Bool
+    let stampImage: UIImage?
     let onPointTap: (Int) -> Void
     let onReset: () -> Void
 
@@ -392,11 +488,26 @@ private struct PointCardView: View {
     @ViewBuilder
     private func pointIcon(isEarned: Bool, isNext: Bool, isJustTapped: Bool) -> some View {
         if isEarned {
-            Image(systemName: "star.fill")
-                .font(.system(size: 30, weight: .bold))
-                .foregroundStyle(PointCardPalette.accent)
-                .scaleEffect(isJustTapped ? 1.18 : 1.0)
-                .rotationEffect(.degrees(isJustTapped ? -6 : 0))
+            if let stampImage {
+                Image(uiImage: stampImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 40, height: 40)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(.white.opacity(0.9), lineWidth: 2)
+                    )
+                    .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 4)
+                    .scaleEffect(isJustTapped ? 1.18 : 1.0)
+                    .rotationEffect(.degrees(isJustTapped ? -6 : 0))
+            } else {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 30, weight: .bold))
+                    .foregroundStyle(PointCardPalette.accent)
+                    .scaleEffect(isJustTapped ? 1.18 : 1.0)
+                    .rotationEffect(.degrees(isJustTapped ? -6 : 0))
+            }
         } else if isNext {
             Image(systemName: isAuthenticating ? "lock.rotation" : "lock.fill")
                 .font(.system(size: 28, weight: .bold))
@@ -507,25 +618,45 @@ private struct PointCardView: View {
     }
 }
 
-private struct InstructionRow: View {
-    let number: Int
-    let text: String
+private struct StampSettingPreview: View {
+    let stampImage: UIImage?
+    let isLoading: Bool
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text("\(number)")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .frame(width: 34, height: 34)
-                .background(Circle().fill(PointCardPalette.primary))
+        ZStack {
+            Circle()
+                .fill(PointCardPalette.card)
+                .frame(width: 124, height: 124)
+                .shadow(color: .black.opacity(0.12), radius: 18, x: 0, y: 12)
 
-            Text(text)
-                .font(.system(size: 18, weight: .medium, design: .rounded))
-                .foregroundStyle(PointCardPalette.foreground)
-                .fixedSize(horizontal: false, vertical: true)
+            if let stampImage {
+                Image(uiImage: stampImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 112, height: 112)
+                    .clipShape(Circle())
+            } else {
+                Circle()
+                    .fill(PointCardPalette.muted)
+                    .frame(width: 112, height: 112)
+                    .overlay {
+                        Image(systemName: "photo")
+                            .font(.system(size: 36, weight: .bold))
+                            .foregroundStyle(PointCardPalette.primary)
+                    }
+            }
 
-            Spacer(minLength: 0)
+            if isLoading {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(PointCardPalette.primary)
+            }
         }
+        .overlay(
+            Circle()
+                .stroke(PointCardPalette.secondary, lineWidth: 4)
+        )
+        .accessibilityLabel("スタンプ画像を設定")
     }
 }
 
