@@ -10,12 +10,18 @@ import SwiftUI
 import UIKit
 
 struct SettingView: View {
+    @Binding var cardTitle: String
     @Binding var selectedStampItem: PhotosPickerItem?
     @Binding var stampImage: UIImage?
     let isLoadingStampImage: Bool
 
     var body: some View {
         Form {
+            Section("ポイントカード") {
+                TextField("ポイントカード", text: $cardTitle)
+                    .font(.system(size: 17, weight: .medium, design: .rounded))
+            }
+
             Section("スタンプ画像") {
                 VStack(spacing: 16) {
                     StampSettingPreview(
@@ -92,6 +98,7 @@ private struct StampSettingPreview: View {
 }
 
 private struct SettingViewPreviewContainer: View {
+    @State private var cardTitle = "ポイントカード"
     @State private var selectedStampItem: PhotosPickerItem?
     @State private var stampImage: UIImage?
 
@@ -105,6 +112,7 @@ private struct SettingViewPreviewContainer: View {
     var body: some View {
         NavigationStack {
             SettingView(
+                cardTitle: $cardTitle,
                 selectedStampItem: $selectedStampItem,
                 stampImage: $stampImage,
                 isLoadingStampImage: isLoadingStampImage

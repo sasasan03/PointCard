@@ -21,6 +21,7 @@ struct ContentView: View {
     @State private var selectedStampItem: PhotosPickerItem?
     @State private var stampImage: UIImage?
     @State private var isLoadingStampImage = false
+    @State private var cardTitle = "ポイントカード"
 
     private let studentName = "たろう"
     private let maxPoints = 10
@@ -60,6 +61,7 @@ struct ContentView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
                         SettingView(
+                            cardTitle: $cardTitle,
                             selectedStampItem: $selectedStampItem,
                             stampImage: $stampImage,
                             isLoadingStampImage: isLoadingStampImage
@@ -99,7 +101,7 @@ struct ContentView: View {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(PointCardPalette.primary)
 
-                Text("ポイントカード")
+                Text(displayCardTitle)
                     .font(.system(size: 30, weight: .heavy, design: .rounded))
                     .foregroundStyle(PointCardPalette.foreground)
 
@@ -133,6 +135,11 @@ struct ContentView: View {
             onPointTap: addPoint,
             onReset: resetPoints
         )
+    }
+
+    private var displayCardTitle: String {
+        let trimmedTitle = cardTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedTitle.isEmpty ? "ポイントカード" : trimmedTitle
     }
 
     private func addPoint(_ index: Int) {
@@ -291,7 +298,6 @@ private struct PointCardView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
             nameSection
             pointsSection
             footer
@@ -304,58 +310,6 @@ private struct PointCardView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 32, style: .continuous)
                 .stroke(PointCardPalette.secondary, lineWidth: 4)
-        )
-    }
-
-    private var header: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(PointCardPalette.primary)
-
-            Circle()
-                .fill(.white.opacity(0.12))
-                .frame(width: 96, height: 96)
-                .offset(x: 120, y: -34)
-
-            Circle()
-                .fill(.white.opacity(0.08))
-                .frame(width: 140, height: 140)
-                .offset(x: -140, y: 70)
-
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
-                        Text("キラキラカード")
-                            .font(.system(size: 28, weight: .heavy, design: .rounded))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.78)
-                            .allowsTightening(true)
-                    }
-                }
-                .foregroundStyle(.white)
-
-                Spacer(minLength: 12)
-
-                Text("\(points)/\(maxPoints)")
-                    .font(.system(size: 24, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(.white.opacity(0.18), in: Capsule(style: .continuous))
-            }
-            .padding(.horizontal, 22)
-            .padding(.vertical, 20)
-        }
-        .clipShape(
-            UnevenRoundedRectangle(
-                topLeadingRadius: 28,
-                bottomLeadingRadius: 0,
-                bottomTrailingRadius: 0,
-                topTrailingRadius: 28,
-                style: .continuous
-            )
         )
     }
 
