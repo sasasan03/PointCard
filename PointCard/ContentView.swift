@@ -276,46 +276,6 @@ private enum PointAuthenticationResult {
     case failure(String)
 }
 
-private struct SettingView: View {
-    @Binding var selectedStampItem: PhotosPickerItem?
-    @Binding var stampImage: UIImage?
-    let isLoadingStampImage: Bool
-
-    var body: some View {
-        Form {
-            Section("スタンプ画像") {
-                VStack(spacing: 16) {
-                    StampSettingPreview(
-                        stampImage: stampImage,
-                        isLoading: isLoadingStampImage
-                    )
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-
-                    Text("スタンプに使う画像を写真アプリから選べます。")
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
-                        .foregroundStyle(PointCardPalette.mutedForeground)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
-
-                PhotosPicker(selection: $selectedStampItem, matching: .images) {
-                    Label("写真から選ぶ", systemImage: "photo.on.rectangle.angled")
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                }
-
-                if stampImage != nil {
-                    Button("画像をリセット", role: .destructive) {
-                        stampImage = nil
-                        selectedStampItem = nil
-                    }
-                }
-            }
-        }
-        .navigationTitle("設定")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
 private struct PointCardView: View {
     let studentName: String
     let points: Int
@@ -618,48 +578,6 @@ private struct PointCardView: View {
     }
 }
 
-private struct StampSettingPreview: View {
-    let stampImage: UIImage?
-    let isLoading: Bool
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(PointCardPalette.card)
-                .frame(width: 124, height: 124)
-                .shadow(color: .black.opacity(0.12), radius: 18, x: 0, y: 12)
-
-            if let stampImage {
-                Image(uiImage: stampImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 112, height: 112)
-                    .clipShape(Circle())
-            } else {
-                Circle()
-                    .fill(PointCardPalette.muted)
-                    .frame(width: 112, height: 112)
-                    .overlay {
-                        Image(systemName: "photo")
-                            .font(.system(size: 36, weight: .bold))
-                            .foregroundStyle(PointCardPalette.primary)
-                    }
-            }
-
-            if isLoading {
-                ProgressView()
-                    .controlSize(.large)
-                    .tint(PointCardPalette.primary)
-            }
-        }
-        .overlay(
-            Circle()
-                .stroke(PointCardPalette.secondary, lineWidth: 4)
-        )
-        .accessibilityLabel("スタンプ画像を設定")
-    }
-}
-
 private struct CelebrationOverlay: View {
     let dismissAction: () -> Void
     let resetAction: () -> Void
@@ -762,7 +680,7 @@ private struct BackgroundDecorations: View {
     }
 }
 
-private enum PointCardPalette {
+enum PointCardPalette {
     static let background = Color(red: 0.996, green: 0.955, blue: 0.878)
     static let foreground = Color(red: 0.345, green: 0.231, blue: 0.137)
     static let card = Color.white
