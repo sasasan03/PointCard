@@ -20,6 +20,7 @@ struct ContentView: View {
     @State private var alertMessage = ""
     @State private var selectedStampItem: PhotosPickerItem?
     @State private var stampImage: UIImage?
+    @State private var earnedStampImages: [UIImage?] = []
     @State private var isLoadingStampImage = false
     @State private var cardTitle = "ポイントカード"
     @State private var studentName = "たろう"
@@ -130,10 +131,10 @@ struct ContentView: View {
             studentName: displayStudentName,
             points: points,
             maxPoints: maxPoints,
+            earnedStampImages: earnedStampImages,
             lastTappedIndex: lastTappedIndex,
             pulseNextPoint: pulseNextPoint,
             isAuthenticating: isAuthenticating,
-            stampImage: stampImage,
             onPointTap: addPoint
         )
     }
@@ -175,6 +176,7 @@ struct ContentView: View {
 
     private func applyPoint(at index: Int) {
         lastTappedIndex = index
+        storeCurrentStampImage(at: index)
 
         withAnimation(.spring(response: 0.34, dampingFraction: 0.7)) {
             points += 1
@@ -199,7 +201,16 @@ struct ContentView: View {
             showCelebration = false
             lastTappedIndex = nil
             isAuthenticating = false
+            earnedStampImages.removeAll()
         }
+    }
+
+    private func storeCurrentStampImage(at index: Int) {
+        if earnedStampImages.count <= index {
+            earnedStampImages.append(contentsOf: Array(repeating: nil, count: index - earnedStampImages.count + 1))
+        }
+
+        earnedStampImages[index] = stampImage
     }
 
     private func authenticateForNextPoint() async -> PointAuthenticationResult {
@@ -293,10 +304,10 @@ private struct PointCardView: View {
     let studentName: String
     let points: Int
     let maxPoints: Int
+    let earnedStampImages: [UIImage?]
     let lastTappedIndex: Int?
     let pulseNextPoint: Bool
     let isAuthenticating: Bool
-    let stampImage: UIImage?
     let onPointTap: (Int) -> Void
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 5)
@@ -357,6 +368,7 @@ private struct PointCardView: View {
                     let isEarned = index < points
                     let isNext = index == points && points < maxPoints
                     let isJustTapped = lastTappedIndex == index
+                    let earnedStampImage = stampImage(at: index)
 
                     Button {
                         onPointTap(index)
@@ -374,7 +386,12 @@ private struct PointCardView: View {
                                     }
                                 }
 
-                            pointIcon(isEarned: isEarned, isNext: isNext, isJustTapped: isJustTapped)
+                            pointIcon(
+                                stampImage: earnedStampImage,
+                                isEarned: isEarned,
+                                isNext: isNext,
+                                isJustTapped: isJustTapped
+                            )
 
                             Text("\(index + 1)")
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -404,7 +421,7 @@ private struct PointCardView: View {
     }
 
     @ViewBuilder
-    private func pointIcon(isEarned: Bool, isNext: Bool, isJustTapped: Bool) -> some View {
+    private func pointIcon(stampImage: UIImage?, isEarned: Bool, isNext: Bool, isJustTapped: Bool) -> some View {
         if isEarned {
             if let stampImage {
                 Image(uiImage: stampImage)
@@ -435,6 +452,14 @@ private struct PointCardView: View {
                 .fill(.white.opacity(0.55))
                 .frame(width: 30, height: 30)
         }
+    }
+
+    private func stampImage(at index: Int) -> UIImage? {
+        guard earnedStampImages.indices.contains(index) else {
+            return nil
+        }
+
+        return earnedStampImages[index]
     }
 
     private var messageSection: some View {
