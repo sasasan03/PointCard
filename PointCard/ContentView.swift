@@ -338,7 +338,12 @@ private struct PointCardView: View {
         }
         .padding(.horizontal, 22)
         .padding(.vertical, 16)
-        .background(PointCardPalette.secondary.opacity(0.3))
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(PointCardPalette.secondary.opacity(0.3))
+        )
+        .padding(.horizontal, 12)
+        .padding(.top, 12)
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(PointCardPalette.border)
