@@ -160,7 +160,7 @@ struct ContentView: View {
     
     private var rewardSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("ポイント１０このご褒美は、、")
+            Text("ポイント10こ の ごほうびは？")
                 .font(.system(size: 22, weight: .heavy, design: .rounded))
                 .foregroundStyle(PointCardPalette.foreground)
             
