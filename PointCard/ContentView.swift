@@ -35,6 +35,7 @@ struct ContentView: View {
                     VStack(spacing: 24) {
                         titleSection
                         pointCardSection
+                        rewardSection
                     }
                     .frame(maxWidth: 560)
                     .padding(.horizontal, 20)
@@ -142,6 +143,33 @@ struct ContentView: View {
             pulseNextPoint: pulseNextPoint,
             isAuthenticating: isAuthenticating,
             onPointTap: addPoint
+        )
+    }
+
+    private var rewardSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("ポイント１０このご褒美は、、")
+                .font(.system(size: 22, weight: .heavy, design: .rounded))
+                .foregroundStyle(PointCardPalette.foreground)
+
+            Text("好きなおもちゃを買ってもらう")
+                .font(.system(size: 18, weight: .medium, design: .rounded))
+                .foregroundStyle(PointCardPalette.mutedForeground)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 22)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(PointCardPalette.card)
+                .shadow(color: .black.opacity(0.08), radius: 18, x: 0, y: 10)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(PointCardPalette.secondary, lineWidth: 3)
         )
     }
 
@@ -622,7 +650,7 @@ enum PointCardPalette {
     static let secondary = Color(red: 0.984, green: 0.835, blue: 0.369)
     static let accent = Color(red: 0.965, green: 0.663, blue: 0.216)
     static let muted = Color(red: 0.984, green: 0.931, blue: 0.840)
-    static let mutedForeground = Color(red: 0.600, green: 0.455, blue: 0.314)
+    static let mutedForeground = Color(red: 0.839, green: 0.431, blue: 0.620)
     static let border = Color(red: 0.953, green: 0.847, blue: 0.659)
 }
 
