@@ -47,7 +47,7 @@ struct SettingView: View {
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(PointCardPalette.mutedForeground)
 
-                    TextField("例: 好きなおもちゃを買ってもらう", text: $rewardText, axis: .vertical)
+                    TextField("ごほうびを きめてね", text: $rewardText, axis: .vertical)
                         .font(.system(size: 17, weight: .medium, design: .rounded))
                         .lineLimit(1...4)
                         .padding(.horizontal, 12)
