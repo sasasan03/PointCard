@@ -28,23 +28,24 @@ struct ContentView: View {
                 
                 BackgroundDecorations()
                     .ignoresSafeArea()
-                
-                VStack(spacing: 24) {
-                    titleSection
 
-                    Spacer(minLength: 0)
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 24) {
+                        titleSection
 
-                    pointCardSection
+                        pointCardSection
 
-                    Spacer(minLength: 0)
+                        if store.showsRewardSection {
+                            rewardSection
+                        }
 
-                    if store.showsRewardSection {
-                        rewardSection
+                        stampRuleSection
                     }
+                    .frame(maxWidth: 560)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 28)
                 }
-                .frame(maxWidth: 560, maxHeight: .infinity, alignment: .top)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 28)
                 
                 if showCelebration {
                     CelebrationOverlay {
@@ -171,6 +172,39 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 22)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(PointCardPalette.card)
+                .shadow(color: .black.opacity(0.08), radius: 18, x: 0, y: 10)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(PointCardPalette.secondary, lineWidth: 3)
+        )
+    }
+
+    private var stampRuleSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("スタンプのルール")
+                .font(.system(size: 22, weight: .heavy, design: .rounded))
+                .foregroundStyle(PointCardPalette.foreground)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("・ご飯は３食全て残さず食べる")
+                    .foregroundStyle(.red)
+
+                Text("・友達と仲良く遊ぶ")
+                    .foregroundStyle(.red)
+
+                Text("・歯磨きをしなかった")
+                    .foregroundStyle(.blue)
+            }
+            .font(.system(size: 18, weight: .medium, design: .rounded))
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 24)
