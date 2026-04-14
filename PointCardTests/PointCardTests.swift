@@ -10,6 +10,8 @@ import Testing
 import UIKit
 @testable import PointCard
 
+private let testMaxPoints = PointCardStore.defaultMaxPoints
+
 struct PointCardTests {
 
     @Test @MainActor
@@ -41,7 +43,7 @@ struct PointCardTests {
                     cardTitle: "がんばりカード",
                     studentName: "はなこ",
                     completedAt: savedDate,
-                    stamps: (0..<10).map { index in
+                    stamps: (0..<testMaxPoints).map { index in
                         StampHistoryEntry(
                             pointIndex: index,
                             earnedAt: savedDate.addingTimeInterval(TimeInterval(index * 60)),
@@ -82,7 +84,7 @@ struct PointCardTests {
         let persistence = PointCardPersistence(fileURL: testFileURL())
         try persistence.save(PointCardState(points: 0))
 
-        let store = PointCardStore(maxPoints: 10, persistence: persistence)
+        let store = PointCardStore(maxPoints: testMaxPoints, persistence: persistence)
 
         try store.updateSelectedStampImage(
             from: sampleImageData(color: .systemBlue),
@@ -99,11 +101,11 @@ struct PointCardTests {
     }
 
     @Test @MainActor
-    func storeArchivesCompletedCardAfterTenStamps() throws {
+    func storeArchivesCompletedCardAfterFifteenStamps() throws {
         let persistence = PointCardPersistence(fileURL: testFileURL())
         try persistence.save(PointCardState(points: 0))
 
-        let store = PointCardStore(maxPoints: 10, persistence: persistence)
+        let store = PointCardStore(maxPoints: testMaxPoints, persistence: persistence)
         store.cardTitle = "おかいものカード"
         store.studentName = "ゆうた"
 
@@ -112,18 +114,18 @@ struct PointCardTests {
             assetIdentifier: "asset-10"
         )
 
-        for index in 0..<10 {
+        for index in 0..<testMaxPoints {
             store.addPoint(at: index)
         }
 
-        let reloadedStore = PointCardStore(maxPoints: 10, persistence: persistence)
+        let reloadedStore = PointCardStore(maxPoints: testMaxPoints, persistence: persistence)
 
-        #expect(reloadedStore.points == 10)
-        #expect(reloadedStore.currentStamps.count == 10)
+        #expect(reloadedStore.points == testMaxPoints)
+        #expect(reloadedStore.currentStamps.count == testMaxPoints)
         #expect(reloadedStore.completedCards.count == 1)
         #expect(reloadedStore.completedCards[0].displayCardTitle == "おかいものカード")
         #expect(reloadedStore.completedCards[0].displayStudentName == "ゆうた")
-        #expect(reloadedStore.completedCards[0].stamps.count == 10)
+        #expect(reloadedStore.completedCards[0].stamps.count == testMaxPoints)
     }
 
     @Test @MainActor
@@ -131,24 +133,24 @@ struct PointCardTests {
         let persistence = PointCardPersistence(fileURL: testFileURL())
         try persistence.save(PointCardState(points: 0))
 
-        let store = PointCardStore(maxPoints: 10, persistence: persistence)
+        let store = PointCardStore(maxPoints: testMaxPoints, persistence: persistence)
 
         try store.updateSelectedStampImage(
             from: sampleImageData(color: .systemTeal),
             assetIdentifier: "asset-remove"
         )
 
-        for index in 0..<10 {
+        for index in 0..<testMaxPoints {
             store.addPoint(at: index)
         }
 
         store.removeLastPoint()
 
-        let reloadedStore = PointCardStore(maxPoints: 10, persistence: persistence)
+        let reloadedStore = PointCardStore(maxPoints: testMaxPoints, persistence: persistence)
 
-        #expect(reloadedStore.points == 9)
-        #expect(reloadedStore.currentStamps.count == 9)
-        #expect(reloadedStore.currentStamps.last?.pointIndex == 8)
+        #expect(reloadedStore.points == testMaxPoints - 1)
+        #expect(reloadedStore.currentStamps.count == testMaxPoints - 1)
+        #expect(reloadedStore.currentStamps.last?.pointIndex == testMaxPoints - 2)
         #expect(reloadedStore.completedCards.isEmpty)
     }
 

@@ -14,6 +14,7 @@ struct SettingView: View {
     @Binding var studentName: String
     @Binding var showsRewardSection: Bool
     @Binding var rewardText: String
+    let maxPoints: Int
     @Binding var selectedStampItem: PhotosPickerItem?
     let stampImage: UIImage?
     let currentStampPhotoInfo: StampPhotoInfo?
@@ -94,13 +95,13 @@ struct SettingView: View {
 
             Section("ポイント履歴") {
                 if completedCards.isEmpty {
-                    Text("10こたまったポイントカードはまだありません。")
+                    Text("\(maxPoints)こたまったポイントカードはまだありません。")
                         .font(.system(size: 15, weight: .medium, design: .rounded))
                         .foregroundStyle(PointCardPalette.mutedForeground)
                 } else {
                     ForEach(completedCards) { card in
                         NavigationLink {
-                            PointCardHistoryDetailView(card: card)
+                            PointCardHistoryDetailView(card: card, maxPoints: maxPoints)
                         } label: {
                             CompletedPointCardRow(card: card)
                         }
@@ -166,8 +167,7 @@ private struct CompletedPointCardThumbnail: View {
 
 private struct PointCardHistoryDetailView: View {
     let card: CompletedPointCard
-
-    private let maxPoints = 10
+    let maxPoints: Int
 
     var body: some View {
         ZStack {
@@ -298,6 +298,7 @@ private struct SettingViewPreviewContainer: View {
                 studentName: $studentName,
                 showsRewardSection: $showsRewardSection,
                 rewardText: $rewardText,
+                maxPoints: PointCardStore.defaultMaxPoints,
                 selectedStampItem: $selectedStampItem,
                 stampImage: stampImage,
                 currentStampPhotoInfo: currentStampPhotoInfo,
@@ -333,7 +334,7 @@ private enum SettingViewPreviewData {
         ]
     }()
 
-    static let sampleStamps: [StampHistoryEntry] = (0..<10).map { index in
+    static let sampleStamps: [StampHistoryEntry] = (0..<PointCardStore.defaultMaxPoints).map { index in
         StampHistoryEntry(
             pointIndex: index,
             earnedAt: Date().addingTimeInterval(TimeInterval(index * 300)),
