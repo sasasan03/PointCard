@@ -53,22 +53,6 @@ struct SettingView: View {
                         .font(.system(size: 17, weight: .semibold, design: .rounded))
                 }
 
-                if let currentStampPhotoInfo {
-                    LabeledContent("保存サイズ", value: currentStampPhotoInfo.dimensionsLabel)
-                    LabeledContent("容量", value: currentStampPhotoInfo.fileSizeLabel)
-                    LabeledContent("選択日時", value: currentStampPhotoInfo.selectedAtLabel)
-
-                    if let assetIdentifier = currentStampPhotoInfo.assetIdentifier {
-                        LabeledContent("写真ID") {
-                            Text(assetIdentifier)
-                                .font(.system(size: 12, weight: .medium, design: .monospaced))
-                                .foregroundStyle(PointCardPalette.mutedForeground)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                        }
-                    }
-                }
-
                 if stampImage != nil {
                     Button("画像をリセット", role: .destructive) {
                         selectedStampItem = nil
