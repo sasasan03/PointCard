@@ -16,9 +16,7 @@ struct ContentView: View {
     @State private var lastTappedIndex: Int?
     @State private var pulseNextPoint = false
     @State private var isAuthenticating = false
-    @State private var showAlert = false
-    @State private var alertTitle = ""
-    @State private var alertMessage = ""
+    @State private var activeAlert: ContentViewAlert?
     @State private var selectedStampItem: PhotosPickerItem?
     @State private var isLoadingStampImage = false
 
@@ -55,6 +53,17 @@ struct ContentView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        activeAlert = .confiscateLastStamp
+                    } label: {
+                        Text("🥺")
+                            .font(.system(size: 24))
+                    }
+                    .disabled(store.points == 0 || isAuthenticating)
+                    .accessibilityLabel("スタンプを1つ没収")
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
                         SettingView(
@@ -65,7 +74,6 @@ struct ContentView: View {
                             currentStampPhotoInfo: store.currentStampPhotoInfo,
                             completedCards: store.completedCardsForDisplay,
                             isLoadingStampImage: isLoadingStampImage,
-                            onResetPoints: resetPoints,
                             onClearStampImage: {
                                 store.clearSelectedStampImage()
                                 selectedStampItem = nil
@@ -97,11 +105,7 @@ struct ContentView: View {
                 await loadStampImage(from: newItem)
             }
         }
-        .alert(alertTitle, isPresented: $showAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(alertMessage)
-        }
+        .alert(item: $activeAlert, content: makeAlert)
     }
 
     private var titleSection: some View {
@@ -190,9 +194,10 @@ struct ContentView: View {
                 case .cancelled:
                     break
                 case .failure(let message):
-                    alertTitle = "ロック解除できませんでした"
-                    alertMessage = message
-                    showAlert = true
+                    activeAlert = .error(
+                        title: "ロック解除できませんでした",
+                        message: message
+                    )
                 }
             }
         }
@@ -224,6 +229,14 @@ struct ContentView: View {
             showCelebration = false
             lastTappedIndex = nil
             isAuthenticating = false
+        }
+    }
+
+    private func confiscateLastPoint() {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+            store.removeLastPoint()
+            showCelebration = false
+            lastTappedIndex = nil
         }
     }
 
@@ -292,17 +305,36 @@ struct ContentView: View {
 
         do {
             guard let data = try await item.loadTransferable(type: Data.self) else {
-                alertTitle = "画像を読み込めませんでした"
-                alertMessage = "写真アプリの画像をもういちど選びなおしてください。"
-                showAlert = true
+                activeAlert = .error(
+                    title: "画像を読み込めませんでした",
+                    message: "写真アプリの画像をもういちど選びなおしてください。"
+                )
                 return
             }
 
             try store.updateSelectedStampImage(from: data, assetIdentifier: item.itemIdentifier)
         } catch {
-            alertTitle = "画像を読み込めませんでした"
-            alertMessage = "スタンプ画像の取得に失敗しました。もういちどためしてください。"
-            showAlert = true
+            activeAlert = .error(
+                title: "画像を読み込めませんでした",
+                message: "スタンプ画像の取得に失敗しました。もういちどためしてください。"
+            )
+        }
+    }
+
+    private func makeAlert(for alert: ContentViewAlert) -> Alert {
+        switch alert {
+        case .confiscateLastStamp:
+            return Alert(
+                title: Text("本当にスタンプを１つ没収してもいいですか？"),
+                primaryButton: .destructive(Text("はい"), action: confiscateLastPoint),
+                secondaryButton: .cancel(Text("いいえ"))
+            )
+        case .error(let title, let message):
+            return Alert(
+                title: Text(title),
+                message: Text(message),
+                dismissButton: .cancel(Text("OK"))
+            )
         }
     }
 }
@@ -311,6 +343,20 @@ private enum PointAuthenticationResult {
     case success
     case cancelled
     case failure(String)
+}
+
+private enum ContentViewAlert: Identifiable {
+    case confiscateLastStamp
+    case error(title: String, message: String)
+
+    var id: String {
+        switch self {
+        case .confiscateLastStamp:
+            return "confiscate-last-stamp"
+        case .error(let title, let message):
+            return "error-\(title)-\(message)"
+        }
+    }
 }
 
 struct PointCardView: View {

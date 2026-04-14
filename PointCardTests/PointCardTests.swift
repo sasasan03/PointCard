@@ -107,6 +107,32 @@ struct PointCardTests {
     }
 
     @Test @MainActor
+    func removingLastPointRollsBackPersistedCurrentCardAndCompletionHistory() throws {
+        let persistence = PointCardPersistence(fileURL: testFileURL())
+        try persistence.save(PointCardState(points: 0))
+
+        let store = PointCardStore(maxPoints: 10, persistence: persistence)
+
+        try store.updateSelectedStampImage(
+            from: sampleImageData(color: .systemTeal),
+            assetIdentifier: "asset-remove"
+        )
+
+        for index in 0..<10 {
+            store.addPoint(at: index)
+        }
+
+        store.removeLastPoint()
+
+        let reloadedStore = PointCardStore(maxPoints: 10, persistence: persistence)
+
+        #expect(reloadedStore.points == 9)
+        #expect(reloadedStore.currentStamps.count == 9)
+        #expect(reloadedStore.currentStamps.last?.pointIndex == 8)
+        #expect(reloadedStore.completedCards.isEmpty)
+    }
+
+    @Test @MainActor
     func legacyStampHistoryDecodesIntoCurrentStamps() throws {
         let stamp = try #require(
             PersistedStampImage.make(

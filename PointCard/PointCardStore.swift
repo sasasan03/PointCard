@@ -104,6 +104,16 @@ final class PointCardStore: ObservableObject {
         flushPersistence()
     }
 
+    func removeLastPoint() {
+        guard points > 0 else { return }
+
+        removeArchivedCurrentCardIfNeeded()
+
+        points -= 1
+        currentStamps.removeAll { $0.pointIndex >= points }
+        flushPersistence()
+    }
+
     func resetPoints() {
         points = 0
         currentStamps.removeAll()
@@ -171,6 +181,20 @@ final class PointCardStore: ObservableObject {
 #endif
             return normalize(.defaultState, maxPoints: maxPoints)
         }
+    }
+
+    private func removeArchivedCurrentCardIfNeeded() {
+        guard
+            points == maxPoints,
+            let completedAt = currentStamps.last?.earnedAt,
+            let archivedCardIndex = completedCards.lastIndex(where: {
+                $0.completedAt == completedAt && $0.stamps == currentStamps
+            })
+        else {
+            return
+        }
+
+        completedCards.remove(at: archivedCardIndex)
     }
 
     private static func normalize(_ state: PointCardState, maxPoints: Int) -> PointCardState {

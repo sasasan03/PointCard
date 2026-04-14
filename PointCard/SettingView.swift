@@ -16,9 +16,7 @@ struct SettingView: View {
     let stampImage: UIImage?
     let currentStampPhotoInfo: StampPhotoInfo?
     let completedCards: [CompletedPointCard]
-    @State private var showResetPointsAlert = false
     let isLoadingStampImage: Bool
-    let onResetPoints: () -> Void
     let onClearStampImage: () -> Void
 
     var body: some View {
@@ -76,24 +74,9 @@ struct SettingView: View {
                     }
                 }
             }
-
-            Section("ポイント") {
-                Button("ポイントをリセット", role: .destructive) {
-                    showResetPointsAlert = true
-                }
-                .font(.system(size: 17, weight: .semibold, design: .rounded))
-            }
         }
         .navigationTitle("設定")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("ポイントをリセットしますか？", isPresented: $showResetPointsAlert) {
-            Button("キャンセル", role: .cancel) {}
-            Button("リセット", role: .destructive) {
-                onResetPoints()
-            }
-        } message: {
-            Text("今までのポイントがすべて消えます。")
-        }
     }
 }
 
@@ -283,7 +266,6 @@ private struct SettingViewPreviewContainer: View {
                 currentStampPhotoInfo: currentStampPhotoInfo,
                 completedCards: completedCards,
                 isLoadingStampImage: isLoadingStampImage,
-                onResetPoints: {},
                 onClearStampImage: {
                     stampImage = nil
                     currentStampPhotoInfo = nil
