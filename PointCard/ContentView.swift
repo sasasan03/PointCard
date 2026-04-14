@@ -10,7 +10,8 @@ import PhotosUI
 import SwiftUI
 
 struct ContentView: View {
-    @State private var points = 3
+    @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var store = PointCardStore()
     @State private var showCelebration = false
     @State private var lastTappedIndex: Int?
     @State private var pulseNextPoint = false
@@ -19,13 +20,7 @@ struct ContentView: View {
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var selectedStampItem: PhotosPickerItem?
-    @State private var stampImage: UIImage?
-    @State private var earnedStampImages: [UIImage?] = []
     @State private var isLoadingStampImage = false
-    @State private var cardTitle = "ポイントカード"
-    @State private var studentName = "たろう"
-
-    private let maxPoints = 10
 
     var body: some View {
         NavigationStack {
@@ -62,12 +57,18 @@ struct ContentView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
                         SettingView(
-                            cardTitle: $cardTitle,
-                            studentName: $studentName,
+                            cardTitle: $store.cardTitle,
+                            studentName: $store.studentName,
                             selectedStampItem: $selectedStampItem,
-                            stampImage: $stampImage,
+                            stampImage: store.selectedStampImage,
+                            currentStampPhotoInfo: store.currentStampPhotoInfo,
+                            stampHistory: store.stampHistoryForDisplay,
                             isLoadingStampImage: isLoadingStampImage,
-                            onResetPoints: resetPoints
+                            onResetPoints: resetPoints,
+                            onClearStampImage: {
+                                store.clearSelectedStampImage()
+                                selectedStampItem = nil
+                            }
                         )
                     } label: {
                         Image(systemName: "gearshape.fill")
@@ -81,6 +82,11 @@ struct ContentView: View {
         .onAppear {
             withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
                 pulseNextPoint = true
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase != .active {
+                store.flushPersistence()
             }
         }
         .onChange(of: selectedStampItem) { _, newItem in
@@ -104,7 +110,7 @@ struct ContentView: View {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(PointCardPalette.primary)
 
-                Text(displayCardTitle)
+                Text(store.displayCardTitle)
                     .font(.system(size: 30, weight: .heavy, design: .rounded))
                     .foregroundStyle(PointCardPalette.foreground)
 
@@ -128,10 +134,10 @@ struct ContentView: View {
 
     private var pointCardSection: some View {
         PointCardView(
-            studentName: displayStudentName,
-            points: points,
-            maxPoints: maxPoints,
-            earnedStampImages: earnedStampImages,
+            studentName: store.displayStudentName,
+            points: store.points,
+            maxPoints: store.maxPoints,
+            earnedStampImages: store.earnedStampImages,
             lastTappedIndex: lastTappedIndex,
             pulseNextPoint: pulseNextPoint,
             isAuthenticating: isAuthenticating,
@@ -139,18 +145,8 @@ struct ContentView: View {
         )
     }
 
-    private var displayCardTitle: String {
-        let trimmedTitle = cardTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmedTitle.isEmpty ? "ポイントカード" : trimmedTitle
-    }
-
-    private var displayStudentName: String {
-        let trimmedName = studentName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmedName.isEmpty ? "たろう" : trimmedName
-    }
-
     private func addPoint(_ index: Int) {
-        guard index == points, points < maxPoints, !isAuthenticating else { return }
+        guard index == store.points, store.points < store.maxPoints, !isAuthenticating else { return }
 
         isAuthenticating = true
 
@@ -176,13 +172,12 @@ struct ContentView: View {
 
     private func applyPoint(at index: Int) {
         lastTappedIndex = index
-        storeCurrentStampImage(at: index)
 
         withAnimation(.spring(response: 0.34, dampingFraction: 0.7)) {
-            points += 1
+            store.addPoint(at: index)
         }
 
-        if points == maxPoints {
+        if store.points == store.maxPoints {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
                     showCelebration = true
@@ -197,20 +192,11 @@ struct ContentView: View {
 
     private func resetPoints() {
         withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
-            points = 0
+            store.resetPoints()
             showCelebration = false
             lastTappedIndex = nil
             isAuthenticating = false
-            earnedStampImages.removeAll()
         }
-    }
-
-    private func storeCurrentStampImage(at index: Int) {
-        if earnedStampImages.count <= index {
-            earnedStampImages.append(contentsOf: Array(repeating: nil, count: index - earnedStampImages.count + 1))
-        }
-
-        earnedStampImages[index] = stampImage
     }
 
     private func authenticateForNextPoint() async -> PointAuthenticationResult {
@@ -277,15 +263,14 @@ struct ContentView: View {
         defer { isLoadingStampImage = false }
 
         do {
-            guard let data = try await item.loadTransferable(type: Data.self),
-                  let uiImage = UIImage(data: data) else {
+            guard let data = try await item.loadTransferable(type: Data.self) else {
                 alertTitle = "画像を読み込めませんでした"
                 alertMessage = "写真アプリの画像をもういちど選びなおしてください。"
                 showAlert = true
                 return
             }
 
-            stampImage = uiImage
+            try store.updateSelectedStampImage(from: data, assetIdentifier: item.itemIdentifier)
         } catch {
             alertTitle = "画像を読み込めませんでした"
             alertMessage = "スタンプ画像の取得に失敗しました。もういちどためしてください。"
@@ -464,13 +449,7 @@ private struct PointCardView: View {
 
     private var messageSection: some View {
         Group {
-            if isAuthenticating {
-                Text("ロック解除をまっています...")
-                    .foregroundStyle(PointCardPalette.primary)
-            } else if points == 0 {
-                Text("タップしてロックを解除しよう！")
-                    .foregroundStyle(PointCardPalette.mutedForeground)
-            } else if points < maxPoints {
+            if points < maxPoints {
                 Text(
                     "あと \(Text("\(maxPoints - points)").foregroundStyle(PointCardPalette.primary)) こ！"
                 )
