@@ -508,14 +508,28 @@ struct PointCardPersistence {
     }
 
     private static func defaultFileURL() -> URL {
-        let applicationSupportURL = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        let baseDirectoryURL: URL
+        let fileName: String
 
-        return applicationSupportURL
+        if isRunningForPreviews {
+            baseDirectoryURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+                .appendingPathComponent("PointCardPreview", isDirectory: true)
+            fileName = "point-card-preview-\(ProcessInfo.processInfo.processIdentifier).json"
+        } else {
+            baseDirectoryURL = FileManager.default.urls(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask
+            ).first ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            fileName = "point-card-state.json"
+        }
+
+        return baseDirectoryURL
             .appendingPathComponent("PointCard", isDirectory: true)
-            .appendingPathComponent("point-card-state.json", isDirectory: false)
+            .appendingPathComponent(fileName, isDirectory: false)
+    }
+
+    private static var isRunningForPreviews: Bool {
+        ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
     }
 
     private static let encoder: JSONEncoder = {

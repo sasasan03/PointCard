@@ -709,8 +709,6 @@ enum PointCardPalette {
     static let border = Color(red: 0.953, green: 0.847, blue: 0.659)
 }
 
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
+#Preview {
+    ContentView()
 }

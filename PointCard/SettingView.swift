@@ -362,14 +362,10 @@ private enum SettingViewPreviewData {
     }()
 }
 
-struct SettingView_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            SettingViewPreviewContainer(stampImage: SettingViewPreviewData.sampleStampImage)
-                .previewDisplayName("With Image")
+#Preview("With Image") {
+    SettingViewPreviewContainer(stampImage: SettingViewPreviewData.sampleStampImage)
+}
 
-            SettingViewPreviewContainer(stampImage: nil)
-                .previewDisplayName("Empty")
-        }
-    }
+#Preview("Empty") {
+    SettingViewPreviewContainer(stampImage: nil)
 }
