@@ -24,6 +24,8 @@ struct PointCardTests {
         )
         let savedState = PointCardState(
             points: 2,
+            showsRewardSection: false,
+            rewardText: "ゲームをしてもらう",
             cardTitle: "おてつだいカード",
             studentName: "はなこ",
             selectedStamp: stamp,
@@ -55,6 +57,24 @@ struct PointCardTests {
         let loadedState = try persistence.load()
 
         #expect(loadedState == savedState)
+    }
+
+    @Test @MainActor
+    func rewardSectionVisibilityDefaultsToTrueForLegacyState() throws {
+        let legacyJSON = """
+        {
+          "points": 0,
+          "cardTitle": "ポイントカード",
+          "studentName": "たろう",
+          "currentStamps": [],
+          "completedCards": []
+        }
+        """.data(using: .utf8)!
+
+        let decoded = try JSONDecoder().decode(PointCardState.self, from: legacyJSON)
+
+        #expect(decoded.showsRewardSection)
+        #expect(decoded.rewardText == PointCardState.defaultRewardText)
     }
 
     @Test @MainActor

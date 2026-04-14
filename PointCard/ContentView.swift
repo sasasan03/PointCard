@@ -19,27 +19,33 @@ struct ContentView: View {
     @State private var activeAlert: ContentViewAlert?
     @State private var selectedStampItem: PhotosPickerItem?
     @State private var isLoadingStampImage = false
-
+    
     var body: some View {
         NavigationStack {
             ZStack {
                 PointCardPalette.background
                     .ignoresSafeArea()
-
+                
                 BackgroundDecorations()
                     .ignoresSafeArea()
+                
+                VStack(spacing: 24) {
+                    titleSection
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
-                        titleSection
-                        pointCardSection
+                    Spacer(minLength: 0)
+
+                    pointCardSection
+
+                    Spacer(minLength: 0)
+
+                    if store.showsRewardSection {
                         rewardSection
                     }
-                    .frame(maxWidth: 560)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 28)
                 }
-
+                .frame(maxWidth: 560, maxHeight: .infinity, alignment: .top)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 28)
+                
                 if showCelebration {
                     CelebrationOverlay {
                         withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) {
@@ -63,12 +69,14 @@ struct ContentView: View {
                     .disabled(store.points == 0 || isAuthenticating)
                     .accessibilityLabel("スタンプを1つ没収")
                 }
-
+                
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
                         SettingView(
                             cardTitle: $store.cardTitle,
                             studentName: $store.studentName,
+                            showsRewardSection: $store.showsRewardSection,
+                            rewardText: $store.rewardText,
                             selectedStampItem: $selectedStampItem,
                             stampImage: store.selectedStampImage,
                             currentStampPhotoInfo: store.currentStampPhotoInfo,
@@ -100,25 +108,25 @@ struct ContentView: View {
         }
         .onChange(of: selectedStampItem) { _, newItem in
             guard let newItem else { return }
-
+            
             Task {
                 await loadStampImage(from: newItem)
             }
         }
         .alert(item: $activeAlert, content: makeAlert)
     }
-
+    
     private var titleSection: some View {
         VStack(spacing: 14) {
             HStack(spacing: 14) {
                 Image(systemName: "sparkles")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(PointCardPalette.primary)
-
+                
                 Text(store.displayCardTitle)
                     .font(.system(size: 30, weight: .heavy, design: .rounded))
                     .foregroundStyle(PointCardPalette.foreground)
-
+                
                 Image(systemName: "sparkles")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(PointCardPalette.accent)
@@ -136,7 +144,7 @@ struct ContentView: View {
             )
         }
     }
-
+    
     private var pointCardSection: some View {
         PointCardView(
             studentName: store.displayStudentName,
@@ -149,14 +157,14 @@ struct ContentView: View {
             onPointTap: addPoint
         )
     }
-
+    
     private var rewardSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("ポイント１０このご褒美は、、")
                 .font(.system(size: 22, weight: .heavy, design: .rounded))
                 .foregroundStyle(PointCardPalette.foreground)
-
-            Text("好きなおもちゃを買ってもらう")
+            
+            Text(store.displayRewardText)
                 .font(.system(size: 18, weight: .medium, design: .rounded))
                 .foregroundStyle(PointCardPalette.mutedForeground)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -176,18 +184,18 @@ struct ContentView: View {
                 .stroke(PointCardPalette.secondary, lineWidth: 3)
         )
     }
-
+    
     private func addPoint(_ index: Int) {
         guard index == store.points, store.points < store.maxPoints, !isAuthenticating else { return }
-
+        
         isAuthenticating = true
-
+        
         Task {
             let result = await authenticateForNextPoint()
-
+            
             await MainActor.run {
                 isAuthenticating = false
-
+                
                 switch result {
                 case .success:
                     applyPoint(at: index)
@@ -202,14 +210,14 @@ struct ContentView: View {
             }
         }
     }
-
+    
     private func applyPoint(at index: Int) {
         lastTappedIndex = index
-
+        
         withAnimation(.spring(response: 0.34, dampingFraction: 0.7)) {
             store.addPoint(at: index)
         }
-
+        
         if store.points == store.maxPoints {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
@@ -217,12 +225,12 @@ struct ContentView: View {
                 }
             }
         }
-
+        
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
             lastTappedIndex = nil
         }
     }
-
+    
     private func resetPoints() {
         withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
             store.resetPoints()
@@ -231,7 +239,7 @@ struct ContentView: View {
             isAuthenticating = false
         }
     }
-
+    
     private func confiscateLastPoint() {
         withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
             store.removeLastPoint()
@@ -239,25 +247,25 @@ struct ContentView: View {
             lastTappedIndex = nil
         }
     }
-
+    
     private func authenticateForNextPoint() async -> PointAuthenticationResult {
         let context = LAContext()
         context.localizedCancelTitle = "キャンセル"
-
+        
         var error: NSError?
         let reason = "ポイントの星をつけるためにロックを解除してください。"
-
+        
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
             return .failure(authenticationFailureMessage(for: error))
         }
-
+        
         return await withCheckedContinuation { continuation in
             context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, authError in
                 if success {
                     continuation.resume(returning: .success)
                     return
                 }
-
+                
                 if let laError = authError as? LAError {
                     switch laError.code {
                     case .userCancel, .appCancel, .systemCancel:
@@ -267,17 +275,17 @@ struct ContentView: View {
                         break
                     }
                 }
-
+                
                 continuation.resume(returning: .failure(authenticationFailureMessage(for: authError)))
             }
         }
     }
-
+    
     private func authenticationFailureMessage(for error: Error?) -> String {
         guard let laError = error as? LAError else {
             return "ロック解除に失敗しました。もういちどためしてください。"
         }
-
+        
         switch laError.code {
         case .authenticationFailed:
             return "ロック解除に失敗しました。もういちどためしてください。"
@@ -297,12 +305,12 @@ struct ContentView: View {
             return "ロック解除できませんでした。もういちどためしてください。"
         }
     }
-
+    
     @MainActor
     private func loadStampImage(from item: PhotosPickerItem) async {
         isLoadingStampImage = true
         defer { isLoadingStampImage = false }
-
+        
         do {
             guard let data = try await item.loadTransferable(type: Data.self) else {
                 activeAlert = .error(
@@ -311,7 +319,7 @@ struct ContentView: View {
                 )
                 return
             }
-
+            
             try store.updateSelectedStampImage(from: data, assetIdentifier: item.itemIdentifier)
         } catch {
             activeAlert = .error(
@@ -320,7 +328,7 @@ struct ContentView: View {
             )
         }
     }
-
+    
     private func makeAlert(for alert: ContentViewAlert) -> Alert {
         switch alert {
         case .confiscateLastStamp:
@@ -348,7 +356,7 @@ private enum PointAuthenticationResult {
 private enum ContentViewAlert: Identifiable {
     case confiscateLastStamp
     case error(title: String, message: String)
-
+    
     var id: String {
         switch self {
         case .confiscateLastStamp:
@@ -368,9 +376,9 @@ struct PointCardView: View {
     let pulseNextPoint: Bool
     let isAuthenticating: Bool
     let onPointTap: (Int) -> Void
-
+    
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 5)
-
+    
     var body: some View {
         VStack(spacing: 0) {
             nameSection
@@ -386,28 +394,28 @@ struct PointCardView: View {
                 .stroke(PointCardPalette.secondary, lineWidth: 4)
         )
     }
-
+    
     private var nameSection: some View {
         HStack(spacing: 14) {
             ZStack {
                 Circle()
                     .fill(PointCardPalette.accent)
                     .frame(width: 50, height: 50)
-
+                
                 Text("🌟")
                     .font(.system(size: 24))
             }
-
+            
             VStack(alignment: .leading, spacing: 4) {
                 Text("なまえ")
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundStyle(PointCardPalette.mutedForeground)
-
+                
                 Text(studentName)
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundStyle(PointCardPalette.foreground)
             }
-
+            
             Spacer()
         }
         .padding(.horizontal, 22)
@@ -419,7 +427,7 @@ struct PointCardView: View {
         .padding(.horizontal, 12)
         .padding(.top, 12)
     }
-
+    
     private var pointsSection: some View {
         VStack(spacing: 18) {
             LazyVGrid(columns: columns, spacing: 12) {
@@ -428,7 +436,7 @@ struct PointCardView: View {
                     let isNext = index == points && points < maxPoints
                     let isJustTapped = lastTappedIndex == index
                     let earnedStampImage = stampImage(at: index)
-
+                    
                     Button {
                         onPointTap(index)
                     } label: {
@@ -444,14 +452,14 @@ struct PointCardView: View {
                                             .foregroundStyle(PointCardPalette.primary.opacity(0.6))
                                     }
                                 }
-
+                            
                             pointIcon(
                                 stampImage: earnedStampImage,
                                 isEarned: isEarned,
                                 isNext: isNext,
                                 isJustTapped: isJustTapped
                             )
-
+                            
                             Text("\(index + 1)")
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
                                 .foregroundStyle(
@@ -472,13 +480,13 @@ struct PointCardView: View {
                     .disabled(!isNext || isAuthenticating)
                 }
             }
-
+            
             messageSection
             progressBar
         }
         .padding(22)
     }
-
+    
     @ViewBuilder
     private func pointIcon(stampImage: UIImage?, isEarned: Bool, isNext: Bool, isJustTapped: Bool) -> some View {
         if isEarned {
@@ -509,15 +517,15 @@ struct PointCardView: View {
                 .frame(width: 30, height: 30)
         }
     }
-
+    
     private func stampImage(at index: Int) -> UIImage? {
         guard earnedStampImages.indices.contains(index) else {
             return nil
         }
-
+        
         return earnedStampImages[index]
     }
-
+    
     private var messageSection: some View {
         Group {
             if points < maxPoints {
@@ -534,15 +542,15 @@ struct PointCardView: View {
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
     }
-
+    
     private var progressBar: some View {
         GeometryReader { geometry in
             let width = geometry.size.width * CGFloat(points) / CGFloat(maxPoints)
-
+            
             ZStack(alignment: .leading) {
                 Capsule(style: .continuous)
                     .fill(PointCardPalette.muted)
-
+                
                 Capsule(style: .continuous)
                     .fill(
                         LinearGradient(
@@ -564,7 +572,7 @@ struct PointCardView: View {
         }
         .frame(height: 24)
     }
-
+    
     private func backgroundColor(isEarned: Bool, isNext: Bool) -> Color {
         if isEarned {
             return PointCardPalette.secondary
@@ -574,7 +582,7 @@ struct PointCardView: View {
         }
         return PointCardPalette.muted
     }
-
+    
     private func cellScale(isNext: Bool, isJustTapped: Bool) -> CGFloat {
         if isJustTapped {
             return 1.14
@@ -589,13 +597,13 @@ struct PointCardView: View {
 private struct CelebrationOverlay: View {
     let dismissAction: () -> Void
     let resetAction: () -> Void
-
+    
     var body: some View {
         ZStack {
             PointCardPalette.foreground.opacity(0.28)
                 .ignoresSafeArea()
                 .onTapGesture(perform: dismissAction)
-
+            
             VStack(spacing: 18) {
                 HStack(spacing: 14) {
                     Image(systemName: "party.popper.fill")
@@ -608,15 +616,15 @@ private struct CelebrationOverlay: View {
                     PointCardPalette.secondary,
                     PointCardPalette.primary
                 )
-
+                
                 Text("すごい！")
                     .font(.system(size: 38, weight: .heavy, design: .rounded))
                     .foregroundStyle(PointCardPalette.foreground)
-
+                
                 Text("全部あつめたね！")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(PointCardPalette.foreground)
-
+                
                 Button("もういちど！") {
                     resetAction()
                 }
@@ -654,21 +662,21 @@ private struct BackgroundDecorations: View {
                     x: geometry.size.width * 0.18,
                     y: 84
                 )
-
+                
                 backgroundBubble(
                     color: PointCardPalette.primary.opacity(0.24),
                     diameter: 132,
                     x: geometry.size.width - 84,
                     y: 180
                 )
-
+                
                 backgroundBubble(
                     color: PointCardPalette.accent.opacity(0.22),
                     diameter: 104,
                     x: geometry.size.width * 0.26,
                     y: geometry.size.height - 150
                 )
-
+                
                 backgroundBubble(
                     color: PointCardPalette.secondary.opacity(0.4),
                     diameter: 64,
@@ -678,7 +686,7 @@ private struct BackgroundDecorations: View {
             }
         }
     }
-
+    
     private func backgroundBubble(color: Color, diameter: CGFloat, x: CGFloat, y: CGFloat) -> some View {
         Circle()
             .fill(color)

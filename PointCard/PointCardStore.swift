@@ -15,6 +15,12 @@ final class PointCardStore: ObservableObject {
     @Published var points: Int {
         didSet { schedulePersistence() }
     }
+    @Published var showsRewardSection: Bool {
+        didSet { schedulePersistence() }
+    }
+    @Published var rewardText: String {
+        didSet { schedulePersistence() }
+    }
     @Published var cardTitle: String {
         didSet { schedulePersistence() }
     }
@@ -43,6 +49,8 @@ final class PointCardStore: ObservableObject {
 
         let restoredState = Self.restoreState(from: self.persistence, maxPoints: maxPoints)
         points = restoredState.points
+        showsRewardSection = restoredState.showsRewardSection
+        rewardText = restoredState.rewardText
         cardTitle = restoredState.cardTitle
         studentName = restoredState.studentName
         selectedStamp = restoredState.selectedStamp
@@ -58,6 +66,11 @@ final class PointCardStore: ObservableObject {
     var displayStudentName: String {
         let trimmedName = studentName.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmedName.isEmpty ? PointCardState.defaultStudentName : trimmedName
+    }
+
+    var displayRewardText: String {
+        let trimmedReward = rewardText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedReward.isEmpty ? PointCardState.defaultRewardText : trimmedReward
     }
 
     var selectedStampImage: UIImage? {
@@ -158,6 +171,8 @@ final class PointCardStore: ObservableObject {
             try persistence.save(
                 PointCardState(
                     points: points,
+                    showsRewardSection: showsRewardSection,
+                    rewardText: rewardText,
                     cardTitle: cardTitle,
                     studentName: studentName,
                     selectedStamp: selectedStamp,
@@ -218,6 +233,8 @@ final class PointCardStore: ObservableObject {
 
         return PointCardState(
             points: normalizedPoints,
+            showsRewardSection: state.showsRewardSection,
+            rewardText: state.rewardText,
             cardTitle: state.cardTitle,
             studentName: state.studentName,
             selectedStamp: state.selectedStamp,
@@ -241,9 +258,12 @@ enum PointCardStoreError: LocalizedError {
 struct PointCardState: Codable, Equatable {
     static let defaultCardTitle = "ポイントカード"
     static let defaultStudentName = "たろう"
+    static let defaultRewardText = "好きなおもちゃを買ってもらう"
     static let defaultState = PointCardState(points: 0)
 
     var points: Int = 0
+    var showsRewardSection: Bool = true
+    var rewardText: String = PointCardState.defaultRewardText
     var cardTitle: String = PointCardState.defaultCardTitle
     var studentName: String = PointCardState.defaultStudentName
     var selectedStamp: PersistedStampImage?
@@ -252,6 +272,8 @@ struct PointCardState: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case points
+        case showsRewardSection
+        case rewardText
         case cardTitle
         case studentName
         case selectedStamp
@@ -262,6 +284,8 @@ struct PointCardState: Codable, Equatable {
 
     init(
         points: Int = 0,
+        showsRewardSection: Bool = true,
+        rewardText: String = PointCardState.defaultRewardText,
         cardTitle: String = PointCardState.defaultCardTitle,
         studentName: String = PointCardState.defaultStudentName,
         selectedStamp: PersistedStampImage? = nil,
@@ -269,6 +293,8 @@ struct PointCardState: Codable, Equatable {
         completedCards: [CompletedPointCard] = []
     ) {
         self.points = points
+        self.showsRewardSection = showsRewardSection
+        self.rewardText = rewardText
         self.cardTitle = cardTitle
         self.studentName = studentName
         self.selectedStamp = selectedStamp
@@ -279,6 +305,8 @@ struct PointCardState: Codable, Equatable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         points = try container.decodeIfPresent(Int.self, forKey: .points) ?? 0
+        showsRewardSection = try container.decodeIfPresent(Bool.self, forKey: .showsRewardSection) ?? true
+        rewardText = try container.decodeIfPresent(String.self, forKey: .rewardText) ?? PointCardState.defaultRewardText
         cardTitle = try container.decodeIfPresent(String.self, forKey: .cardTitle) ?? PointCardState.defaultCardTitle
         studentName = try container.decodeIfPresent(String.self, forKey: .studentName) ?? PointCardState.defaultStudentName
         selectedStamp = try container.decodeIfPresent(PersistedStampImage.self, forKey: .selectedStamp)
@@ -291,6 +319,8 @@ struct PointCardState: Codable, Equatable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(points, forKey: .points)
+        try container.encode(showsRewardSection, forKey: .showsRewardSection)
+        try container.encode(rewardText, forKey: .rewardText)
         try container.encode(cardTitle, forKey: .cardTitle)
         try container.encode(studentName, forKey: .studentName)
         try container.encodeIfPresent(selectedStamp, forKey: .selectedStamp)

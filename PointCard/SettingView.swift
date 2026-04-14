@@ -12,6 +12,8 @@ import UIKit
 struct SettingView: View {
     @Binding var cardTitle: String
     @Binding var studentName: String
+    @Binding var showsRewardSection: Bool
+    @Binding var rewardText: String
     @Binding var selectedStampItem: PhotosPickerItem?
     let stampImage: UIImage?
     let currentStampPhotoInfo: StampPhotoInfo?
@@ -21,7 +23,7 @@ struct SettingView: View {
 
     var body: some View {
         Form {
-            Section("ポイントカード") {
+            Section("ポイントカード名") {
                 TextField("ポイントカード", text: $cardTitle)
                     .font(.system(size: 17, weight: .medium, design: .rounded))
             }
@@ -29,6 +31,37 @@ struct SettingView: View {
             Section("なまえ") {
                 TextField("たろう", text: $studentName)
                     .font(.system(size: 17, weight: .medium, design: .rounded))
+            }
+
+            Section("ご褒美") {
+                Toggle("ご褒美（目標）の表示", isOn: $showsRewardSection)
+                    .font(.system(size: 17, weight: .medium, design: .rounded))
+                    .tint(PointCardPalette.primary)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("ご褒美の内容")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(PointCardPalette.foreground)
+
+                    Text("下の欄をタップして編集できます")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(PointCardPalette.mutedForeground)
+
+                    TextField("例: 好きなおもちゃを買ってもらう", text: $rewardText, axis: .vertical)
+                        .font(.system(size: 17, weight: .medium, design: .rounded))
+                        .lineLimit(1...4)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(PointCardPalette.card)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(PointCardPalette.secondary, lineWidth: 2)
+                        )
+                }
+                .padding(.vertical, 4)
             }
 
             Section("スタンプ画像") {
@@ -242,6 +275,8 @@ private struct StampSettingPreview: View {
 private struct SettingViewPreviewContainer: View {
     @State private var cardTitle = "ポイントカード"
     @State private var studentName = "たろう"
+    @State private var showsRewardSection = true
+    @State private var rewardText = PointCardState.defaultRewardText
     @State private var selectedStampItem: PhotosPickerItem?
     @State private var stampImage: UIImage?
     @State private var currentStampPhotoInfo: StampPhotoInfo?
@@ -261,6 +296,8 @@ private struct SettingViewPreviewContainer: View {
             SettingView(
                 cardTitle: $cardTitle,
                 studentName: $studentName,
+                showsRewardSection: $showsRewardSection,
+                rewardText: $rewardText,
                 selectedStampItem: $selectedStampItem,
                 stampImage: stampImage,
                 currentStampPhotoInfo: currentStampPhotoInfo,
