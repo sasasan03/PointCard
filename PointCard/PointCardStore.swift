@@ -24,7 +24,10 @@ final class PointCardStore: ObservableObject {
     @Published private(set) var selectedStamp: PersistedStampImage? {
         didSet { schedulePersistence() }
     }
-    @Published private(set) var stampHistory: [StampHistoryEntry] {
+    @Published private(set) var currentStamps: [StampHistoryEntry] {
+        didSet { schedulePersistence() }
+    }
+    @Published private(set) var completedCards: [CompletedPointCard] {
         didSet { schedulePersistence() }
     }
 
@@ -43,7 +46,8 @@ final class PointCardStore: ObservableObject {
         cardTitle = restoredState.cardTitle
         studentName = restoredState.studentName
         selectedStamp = restoredState.selectedStamp
-        stampHistory = restoredState.stampHistory
+        currentStamps = restoredState.currentStamps
+        completedCards = restoredState.completedCards
     }
 
     var displayCardTitle: String {
@@ -65,12 +69,12 @@ final class PointCardStore: ObservableObject {
     }
 
     var earnedStampImages: [UIImage?] {
-        let imagesByIndex = Dictionary(uniqueKeysWithValues: stampHistory.map { ($0.pointIndex, $0.stamp?.uiImage) })
+        let imagesByIndex = Dictionary(uniqueKeysWithValues: currentStamps.map { ($0.pointIndex, $0.stamp?.uiImage) })
         return (0..<points).map { imagesByIndex[$0] ?? nil }
     }
 
-    var stampHistoryForDisplay: [StampHistoryEntry] {
-        stampHistory.sorted { $0.earnedAt > $1.earnedAt }
+    var completedCardsForDisplay: [CompletedPointCard] {
+        completedCards.sorted { $0.completedAt > $1.completedAt }
     }
 
     func addPoint(at index: Int) {
@@ -82,14 +86,28 @@ final class PointCardStore: ObservableObject {
             stamp: selectedStamp
         )
 
-        stampHistory.append(historyEntry)
-        stampHistory.sort { $0.pointIndex < $1.pointIndex }
+        currentStamps.append(historyEntry)
+        currentStamps.sort { $0.pointIndex < $1.pointIndex }
         points += 1
+
+        if points == maxPoints {
+            completedCards.append(
+                CompletedPointCard(
+                    cardTitle: displayCardTitle,
+                    studentName: displayStudentName,
+                    completedAt: historyEntry.earnedAt,
+                    stamps: currentStamps
+                )
+            )
+        }
+
+        flushPersistence()
     }
 
     func resetPoints() {
         points = 0
-        stampHistory.removeAll()
+        currentStamps.removeAll()
+        flushPersistence()
     }
 
     func updateSelectedStampImage(from data: Data, assetIdentifier: String?) throws {
@@ -133,7 +151,8 @@ final class PointCardStore: ObservableObject {
                     cardTitle: cardTitle,
                     studentName: studentName,
                     selectedStamp: selectedStamp,
-                    stampHistory: stampHistory
+                    currentStamps: currentStamps,
+                    completedCards: completedCards
                 )
             )
         } catch {
@@ -155,30 +174,31 @@ final class PointCardStore: ObservableObject {
     }
 
     private static func normalize(_ state: PointCardState, maxPoints: Int) -> PointCardState {
-        var historyByIndex: [Int: StampHistoryEntry] = [:]
+        var currentStampsByIndex: [Int: StampHistoryEntry] = [:]
 
-        for entry in state.stampHistory where (0..<maxPoints).contains(entry.pointIndex) {
-            guard let currentEntry = historyByIndex[entry.pointIndex] else {
-                historyByIndex[entry.pointIndex] = entry
+        for entry in state.currentStamps where (0..<maxPoints).contains(entry.pointIndex) {
+            guard let currentEntry = currentStampsByIndex[entry.pointIndex] else {
+                currentStampsByIndex[entry.pointIndex] = entry
                 continue
             }
 
             if currentEntry.earnedAt < entry.earnedAt {
-                historyByIndex[entry.pointIndex] = entry
+                currentStampsByIndex[entry.pointIndex] = entry
             }
         }
 
-        let normalizedHistory = historyByIndex.values.sorted { $0.pointIndex < $1.pointIndex }
-        let minimumPointsFromHistory = (normalizedHistory.last?.pointIndex ?? -1) + 1
+        let normalizedCurrentStamps = currentStampsByIndex.values.sorted { $0.pointIndex < $1.pointIndex }
+        let minimumPointsFromHistory = (normalizedCurrentStamps.last?.pointIndex ?? -1) + 1
         let normalizedPoints = min(max(max(state.points, minimumPointsFromHistory), 0), maxPoints)
-        let filteredHistory = normalizedHistory.filter { $0.pointIndex < normalizedPoints }
+        let filteredCurrentStamps = normalizedCurrentStamps.filter { $0.pointIndex < normalizedPoints }
 
         return PointCardState(
             points: normalizedPoints,
             cardTitle: state.cardTitle,
             studentName: state.studentName,
             selectedStamp: state.selectedStamp,
-            stampHistory: filteredHistory
+            currentStamps: filteredCurrentStamps,
+            completedCards: state.completedCards.sorted { $0.completedAt > $1.completedAt }
         )
     }
 }
@@ -203,7 +223,111 @@ struct PointCardState: Codable, Equatable {
     var cardTitle: String = PointCardState.defaultCardTitle
     var studentName: String = PointCardState.defaultStudentName
     var selectedStamp: PersistedStampImage?
-    var stampHistory: [StampHistoryEntry] = []
+    var currentStamps: [StampHistoryEntry] = []
+    var completedCards: [CompletedPointCard] = []
+
+    private enum CodingKeys: String, CodingKey {
+        case points
+        case cardTitle
+        case studentName
+        case selectedStamp
+        case currentStamps
+        case completedCards
+        case legacyStampHistory = "stampHistory"
+    }
+
+    init(
+        points: Int = 3,
+        cardTitle: String = PointCardState.defaultCardTitle,
+        studentName: String = PointCardState.defaultStudentName,
+        selectedStamp: PersistedStampImage? = nil,
+        currentStamps: [StampHistoryEntry] = [],
+        completedCards: [CompletedPointCard] = []
+    ) {
+        self.points = points
+        self.cardTitle = cardTitle
+        self.studentName = studentName
+        self.selectedStamp = selectedStamp
+        self.currentStamps = currentStamps
+        self.completedCards = completedCards
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        points = try container.decodeIfPresent(Int.self, forKey: .points) ?? 3
+        cardTitle = try container.decodeIfPresent(String.self, forKey: .cardTitle) ?? PointCardState.defaultCardTitle
+        studentName = try container.decodeIfPresent(String.self, forKey: .studentName) ?? PointCardState.defaultStudentName
+        selectedStamp = try container.decodeIfPresent(PersistedStampImage.self, forKey: .selectedStamp)
+        currentStamps = try container.decodeIfPresent([StampHistoryEntry].self, forKey: .currentStamps)
+            ?? (try container.decodeIfPresent([StampHistoryEntry].self, forKey: .legacyStampHistory))
+            ?? []
+        completedCards = try container.decodeIfPresent([CompletedPointCard].self, forKey: .completedCards) ?? []
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(points, forKey: .points)
+        try container.encode(cardTitle, forKey: .cardTitle)
+        try container.encode(studentName, forKey: .studentName)
+        try container.encodeIfPresent(selectedStamp, forKey: .selectedStamp)
+        try container.encode(currentStamps, forKey: .currentStamps)
+        try container.encode(completedCards, forKey: .completedCards)
+    }
+}
+
+struct CompletedPointCard: Codable, Equatable, Identifiable {
+    let id: UUID
+    let cardTitle: String
+    let studentName: String
+    let completedAt: Date
+    let stamps: [StampHistoryEntry]
+
+    init(
+        id: UUID = UUID(),
+        cardTitle: String,
+        studentName: String,
+        completedAt: Date,
+        stamps: [StampHistoryEntry]
+    ) {
+        self.id = id
+        self.cardTitle = cardTitle
+        self.studentName = studentName
+        self.completedAt = completedAt
+        self.stamps = stamps
+    }
+
+    var displayCardTitle: String {
+        let trimmedTitle = cardTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedTitle.isEmpty ? PointCardState.defaultCardTitle : trimmedTitle
+    }
+
+    var displayStudentName: String {
+        let trimmedName = studentName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedName.isEmpty ? PointCardState.defaultStudentName : trimmedName
+    }
+
+    var completedAtLabel: String {
+        completedAt.formatted(
+            .dateTime
+                .year()
+                .month()
+                .day()
+                .hour()
+                .minute()
+        )
+    }
+
+    var earnedStampImages: [UIImage?] {
+        let imagesByIndex = Dictionary(uniqueKeysWithValues: stamps.map { ($0.pointIndex, $0.stamp?.uiImage) })
+        return (0..<stamps.count).map { imagesByIndex[$0] ?? nil }
+    }
+
+    var thumbnailImage: UIImage? {
+        stamps
+            .sorted { $0.pointIndex < $1.pointIndex }
+            .compactMap { $0.stamp?.uiImage }
+            .last
+    }
 }
 
 struct StampHistoryEntry: Codable, Equatable, Identifiable {

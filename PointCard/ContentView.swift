@@ -62,7 +62,7 @@ struct ContentView: View {
                             selectedStampItem: $selectedStampItem,
                             stampImage: store.selectedStampImage,
                             currentStampPhotoInfo: store.currentStampPhotoInfo,
-                            stampHistory: store.stampHistoryForDisplay,
+                            completedCards: store.completedCardsForDisplay,
                             isLoadingStampImage: isLoadingStampImage,
                             onResetPoints: resetPoints,
                             onClearStampImage: {
@@ -285,7 +285,7 @@ private enum PointAuthenticationResult {
     case failure(String)
 }
 
-private struct PointCardView: View {
+struct PointCardView: View {
     let studentName: String
     let points: Int
     let maxPoints: Int
@@ -344,11 +344,6 @@ private struct PointCardView: View {
         )
         .padding(.horizontal, 12)
         .padding(.top, 12)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(PointCardPalette.border)
-                .frame(height: 1)
-        }
     }
 
     private var pointsSection: some View {

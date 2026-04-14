@@ -15,7 +15,7 @@ struct SettingView: View {
     @Binding var selectedStampItem: PhotosPickerItem?
     let stampImage: UIImage?
     let currentStampPhotoInfo: StampPhotoInfo?
-    let stampHistory: [StampHistoryEntry]
+    let completedCards: [CompletedPointCard]
     @State private var showResetPointsAlert = false
     let isLoadingStampImage: Bool
     let onResetPoints: () -> Void
@@ -77,14 +77,18 @@ struct SettingView: View {
                 }
             }
 
-            Section("スタンプ履歴") {
-                if stampHistory.isEmpty {
-                    Text("まだスタンプ履歴はありません。")
+            Section("ポイント履歴") {
+                if completedCards.isEmpty {
+                    Text("10こたまったポイントカードはまだありません。")
                         .font(.system(size: 15, weight: .medium, design: .rounded))
                         .foregroundStyle(PointCardPalette.mutedForeground)
                 } else {
-                    ForEach(stampHistory) { entry in
-                        StampHistoryRow(entry: entry)
+                    ForEach(completedCards) { card in
+                        NavigationLink {
+                            PointCardHistoryDetailView(card: card)
+                        } label: {
+                            CompletedPointCardRow(card: card)
+                        }
                     }
                 }
             }
@@ -109,42 +113,34 @@ struct SettingView: View {
     }
 }
 
-private struct StampHistoryRow: View {
-    let entry: StampHistoryEntry
+private struct CompletedPointCardRow: View {
+    let card: CompletedPointCard
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            StampHistoryThumbnail(image: entry.stamp?.uiImage)
+        HStack(spacing: 14) {
+            CompletedPointCardThumbnail(image: card.thumbnailImage)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(entry.pointLabel)
+                Text(card.displayCardTitle)
                     .font(.system(size: 17, weight: .bold, design: .rounded))
                     .foregroundStyle(PointCardPalette.foreground)
 
-                Text("押した日時: \(entry.earnedAtLabel)")
+                Text(card.displayStudentName)
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(PointCardPalette.mutedForeground)
 
-                if let photoInfo = entry.stamp?.photoInfo {
-                    Text("画像: \(photoInfo.dimensionsLabel) / \(photoInfo.fileSizeLabel)")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(PointCardPalette.mutedForeground)
-
-                    Text("写真選択: \(photoInfo.selectedAtLabel)")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(PointCardPalette.mutedForeground)
-                } else {
-                    Text("画像なしでスタンプしました。")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(PointCardPalette.mutedForeground)
-                }
+                Text("達成日時: \(card.completedAtLabel)")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(PointCardPalette.mutedForeground)
             }
+
+            Spacer()
         }
         .padding(.vertical, 4)
     }
 }
 
-private struct StampHistoryThumbnail: View {
+private struct CompletedPointCardThumbnail: View {
     let image: UIImage?
 
     var body: some View {
@@ -165,6 +161,72 @@ private struct StampHistoryThumbnail: View {
                     .foregroundStyle(PointCardPalette.accent)
             }
         }
+    }
+}
+
+private struct PointCardHistoryDetailView: View {
+    let card: CompletedPointCard
+
+    private let maxPoints = 10
+
+    var body: some View {
+        ZStack {
+            PointCardPalette.background
+                .ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    PointCardHistoryTitleSection(title: card.displayCardTitle)
+
+                    PointCardView(
+                        studentName: card.displayStudentName,
+                        points: maxPoints,
+                        maxPoints: maxPoints,
+                        earnedStampImages: card.earnedStampImages,
+                        lastTappedIndex: nil,
+                        pulseNextPoint: false,
+                        isAuthenticating: false,
+                        onPointTap: { _ in }
+                    )
+                }
+                .frame(maxWidth: 560)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 28)
+            }
+        }
+        .navigationTitle(card.displayCardTitle)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct PointCardHistoryTitleSection: View {
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundStyle(PointCardPalette.primary)
+
+            Text(title)
+                .font(.system(size: 30, weight: .heavy, design: .rounded))
+                .foregroundStyle(PointCardPalette.foreground)
+
+            Image(systemName: "sparkles")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundStyle(PointCardPalette.accent)
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
+        .background(
+            Capsule(style: .continuous)
+                .fill(PointCardPalette.card)
+                .shadow(color: .black.opacity(0.08), radius: 18, x: 0, y: 10)
+        )
+        .overlay(
+            Capsule(style: .continuous)
+                .stroke(PointCardPalette.secondary, lineWidth: 2)
+        )
     }
 }
 
@@ -216,14 +278,14 @@ private struct SettingViewPreviewContainer: View {
     @State private var selectedStampItem: PhotosPickerItem?
     @State private var stampImage: UIImage?
     @State private var currentStampPhotoInfo: StampPhotoInfo?
-    @State private var stampHistory: [StampHistoryEntry]
+    @State private var completedCards: [CompletedPointCard]
 
     let isLoadingStampImage: Bool
 
     init(stampImage: UIImage?, isLoadingStampImage: Bool = false) {
         _stampImage = State(initialValue: stampImage)
         _currentStampPhotoInfo = State(initialValue: SettingViewPreviewData.samplePersistedImage?.photoInfo)
-        _stampHistory = State(initialValue: SettingViewPreviewData.sampleHistory)
+        _completedCards = State(initialValue: SettingViewPreviewData.sampleCompletedCards)
         self.isLoadingStampImage = isLoadingStampImage
     }
 
@@ -235,7 +297,7 @@ private struct SettingViewPreviewContainer: View {
                 selectedStampItem: $selectedStampItem,
                 stampImage: stampImage,
                 currentStampPhotoInfo: currentStampPhotoInfo,
-                stampHistory: stampHistory,
+                completedCards: completedCards,
                 isLoadingStampImage: isLoadingStampImage,
                 onResetPoints: {},
                 onClearStampImage: {
@@ -256,21 +318,25 @@ private enum SettingViewPreviewData {
         return PersistedStampImage.make(from: data, assetIdentifier: "preview-sample-image")
     }()
 
-    static let sampleHistory: [StampHistoryEntry] = {
+    static let sampleCompletedCards: [CompletedPointCard] = {
         let now = Date()
         return [
-            StampHistoryEntry(
-                pointIndex: 2,
-                earnedAt: now,
-                stamp: samplePersistedImage
-            ),
-            StampHistoryEntry(
-                pointIndex: 1,
-                earnedAt: now.addingTimeInterval(-3600),
-                stamp: samplePersistedImage
+            CompletedPointCard(
+                cardTitle: "よくできましたカード",
+                studentName: "たろう",
+                completedAt: now,
+                stamps: sampleStamps
             )
         ]
     }()
+
+    static let sampleStamps: [StampHistoryEntry] = (0..<10).map { index in
+        StampHistoryEntry(
+            pointIndex: index,
+            earnedAt: Date().addingTimeInterval(TimeInterval(index * 300)),
+            stamp: samplePersistedImage
+        )
+    }
 
     static let sampleStampImage: UIImage = {
         let size = CGSize(width: 240, height: 240)
