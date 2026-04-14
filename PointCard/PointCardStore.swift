@@ -217,9 +217,9 @@ enum PointCardStoreError: LocalizedError {
 struct PointCardState: Codable, Equatable {
     static let defaultCardTitle = "ポイントカード"
     static let defaultStudentName = "たろう"
-    static let defaultState = PointCardState(points: 3)
+    static let defaultState = PointCardState(points: 0)
 
-    var points: Int = 3
+    var points: Int = 0
     var cardTitle: String = PointCardState.defaultCardTitle
     var studentName: String = PointCardState.defaultStudentName
     var selectedStamp: PersistedStampImage?
@@ -237,7 +237,7 @@ struct PointCardState: Codable, Equatable {
     }
 
     init(
-        points: Int = 3,
+        points: Int = 0,
         cardTitle: String = PointCardState.defaultCardTitle,
         studentName: String = PointCardState.defaultStudentName,
         selectedStamp: PersistedStampImage? = nil,
@@ -254,7 +254,7 @@ struct PointCardState: Codable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        points = try container.decodeIfPresent(Int.self, forKey: .points) ?? 3
+        points = try container.decodeIfPresent(Int.self, forKey: .points) ?? 0
         cardTitle = try container.decodeIfPresent(String.self, forKey: .cardTitle) ?? PointCardState.defaultCardTitle
         studentName = try container.decodeIfPresent(String.self, forKey: .studentName) ?? PointCardState.defaultStudentName
         selectedStamp = try container.decodeIfPresent(PersistedStampImage.self, forKey: .selectedStamp)
