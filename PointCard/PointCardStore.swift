@@ -12,6 +12,8 @@ import UIKit
 
 @MainActor
 final class PointCardStore: ObservableObject {
+    nonisolated static let defaultMaxPoints = 15
+
     @Published var points: Int {
         didSet { schedulePersistence() }
     }
@@ -43,7 +45,7 @@ final class PointCardStore: ObservableObject {
     private var scheduledSave: DispatchWorkItem?
     private var isRestoringState = false
 
-    init(maxPoints: Int = 10, persistence: PointCardPersistence? = nil) {
+    init(maxPoints: Int = PointCardStore.defaultMaxPoints, persistence: PointCardPersistence? = nil) {
         self.maxPoints = maxPoints
         self.persistence = persistence ?? PointCardPersistence()
 
