@@ -101,7 +101,7 @@ struct SettingView: View {
                             .buttonStyle(.plain)
                         }
 
-                        TextField("ルールを入力", text: stampRuleTextBinding(for: index))
+                        TextField(stampRulePlaceholder(for: index), text: stampRuleTextBinding(for: index))
                             .font(.system(size: 17, weight: .medium, design: .rounded))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 10)
@@ -210,6 +210,17 @@ struct SettingView: View {
                 stampRules[index].color = newValue
             }
         )
+    }
+
+    private func stampRulePlaceholder(for index: Int) -> String {
+        guard stampRules.indices.contains(index) else { return "ルールを入力" }
+
+        switch stampRules[index].color {
+        case .red:
+            return "スタンプがもらえる条件を入力"
+        case .blue:
+            return "スタンプが没収されてしまう条件を入力"
+        }
     }
 
     private func addStampRule() {

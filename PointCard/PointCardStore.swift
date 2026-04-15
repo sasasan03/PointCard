@@ -302,7 +302,7 @@ struct PointCardRule: Codable, Equatable, Identifiable {
     static let maxCount = 3
     static let maxTextLength = 24
     static let defaultRules: [PointCardRule] = [
-        PointCardRule(text: "ご飯は３食全て残さず食べる", color: .red),
+        PointCardRule(text: "ご飯は3食全て残さず食べる", color: .red),
         PointCardRule(text: "友達と仲良く遊ぶ", color: .red),
         PointCardRule(text: "歯磨きをしなかった", color: .blue)
     ]
