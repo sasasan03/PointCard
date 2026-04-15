@@ -85,10 +85,20 @@ struct SettingView: View {
 
                             Spacer()
 
-                            Button("削除", role: .destructive) {
+                            Button {
                                 removeStampRule(at: index)
+                            } label: {
+                                Text("削除")
+                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(.red)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            .stroke(Color.red.opacity(0.45), lineWidth: 1.5)
+                                    )
                             }
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .buttonStyle(.plain)
                         }
 
                         TextField("ルールを入力", text: stampRuleTextBinding(for: index), axis: .vertical)
