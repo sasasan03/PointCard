@@ -76,7 +76,7 @@ struct SettingView: View {
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(PointCardPalette.mutedForeground)
 
-                ForEach(Array(stampRules.enumerated()), id: \.element.id) { index, rule in
+                ForEach(stampRules.indices, id: \.self) { index in
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
                             Text("ルール\(index + 1)")
