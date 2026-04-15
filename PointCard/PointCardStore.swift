@@ -20,6 +20,12 @@ final class PointCardStore: ObservableObject {
     @Published var showsRewardSection: Bool {
         didSet { schedulePersistence() }
     }
+    @Published var showsStampRuleSection: Bool {
+        didSet { schedulePersistence() }
+    }
+    @Published var stampRules: [PointCardRule] {
+        didSet { schedulePersistence() }
+    }
     @Published var rewardText: String {
         didSet { schedulePersistence() }
     }
@@ -52,6 +58,8 @@ final class PointCardStore: ObservableObject {
         let restoredState = Self.restoreState(from: self.persistence, maxPoints: maxPoints)
         points = restoredState.points
         showsRewardSection = restoredState.showsRewardSection
+        showsStampRuleSection = restoredState.showsStampRuleSection
+        stampRules = restoredState.stampRules
         rewardText = restoredState.rewardText
         cardTitle = restoredState.cardTitle
         studentName = restoredState.studentName
@@ -73,6 +81,10 @@ final class PointCardStore: ObservableObject {
     var displayRewardText: String {
         let trimmedReward = rewardText.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmedReward.isEmpty ? PointCardState.defaultRewardText : trimmedReward
+    }
+
+    var displayStampRules: [PointCardRule] {
+        PointCardRule.normalized(stampRules).filter { !$0.displayText.isEmpty }
     }
 
     var selectedStampImage: UIImage? {
@@ -174,6 +186,8 @@ final class PointCardStore: ObservableObject {
                 PointCardState(
                     points: points,
                     showsRewardSection: showsRewardSection,
+                    showsStampRuleSection: showsStampRuleSection,
+                    stampRules: stampRules,
                     rewardText: rewardText,
                     cardTitle: cardTitle,
                     studentName: studentName,
@@ -236,6 +250,8 @@ final class PointCardStore: ObservableObject {
         return PointCardState(
             points: normalizedPoints,
             showsRewardSection: state.showsRewardSection,
+            showsStampRuleSection: state.showsStampRuleSection,
+            stampRules: PointCardRule.normalized(state.stampRules),
             rewardText: state.rewardText,
             cardTitle: state.cardTitle,
             studentName: state.studentName,
@@ -257,6 +273,65 @@ enum PointCardStoreError: LocalizedError {
     }
 }
 
+enum PointCardRuleColor: String, Codable, CaseIterable, Identifiable {
+    case red
+    case blue
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .red:
+            return "赤"
+        case .blue:
+            return "青"
+        }
+    }
+
+    var displayColor: Color {
+        switch self {
+        case .red:
+            return .red
+        case .blue:
+            return .blue
+        }
+    }
+}
+
+struct PointCardRule: Codable, Equatable, Identifiable {
+    static let maxCount = 3
+    static let maxTextLength = 24
+    static let defaultRules: [PointCardRule] = [
+        PointCardRule(text: "ご飯は３食全て残さず食べる", color: .red),
+        PointCardRule(text: "友達と仲良く遊ぶ", color: .red),
+        PointCardRule(text: "歯磨きをしなかった", color: .blue)
+    ]
+
+    let id: UUID
+    var text: String
+    var color: PointCardRuleColor
+
+    init(id: UUID = UUID(), text: String, color: PointCardRuleColor) {
+        self.id = id
+        self.text = String(text.prefix(Self.maxTextLength))
+        self.color = color
+    }
+
+    var displayText: String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func normalized(_ rules: [PointCardRule]) -> [PointCardRule] {
+        Array(rules.prefix(maxCount)).map { rule in
+            PointCardRule(
+                id: rule.id,
+                text: String(rule.displayText.prefix(maxTextLength)),
+                color: rule.color
+            )
+        }
+    }
+}
+
 struct PointCardState: Codable, Equatable {
     static let defaultCardTitle = "ポイントカード"
     static let defaultStudentName = "たろう"
@@ -265,6 +340,8 @@ struct PointCardState: Codable, Equatable {
 
     var points: Int = 0
     var showsRewardSection: Bool = true
+    var showsStampRuleSection: Bool = true
+    var stampRules: [PointCardRule] = PointCardRule.defaultRules
     var rewardText: String = PointCardState.defaultRewardText
     var cardTitle: String = PointCardState.defaultCardTitle
     var studentName: String = PointCardState.defaultStudentName
@@ -275,6 +352,8 @@ struct PointCardState: Codable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case points
         case showsRewardSection
+        case showsStampRuleSection
+        case stampRules
         case rewardText
         case cardTitle
         case studentName
@@ -287,6 +366,8 @@ struct PointCardState: Codable, Equatable {
     init(
         points: Int = 0,
         showsRewardSection: Bool = true,
+        showsStampRuleSection: Bool = true,
+        stampRules: [PointCardRule] = PointCardRule.defaultRules,
         rewardText: String = PointCardState.defaultRewardText,
         cardTitle: String = PointCardState.defaultCardTitle,
         studentName: String = PointCardState.defaultStudentName,
@@ -296,6 +377,8 @@ struct PointCardState: Codable, Equatable {
     ) {
         self.points = points
         self.showsRewardSection = showsRewardSection
+        self.showsStampRuleSection = showsStampRuleSection
+        self.stampRules = PointCardRule.normalized(stampRules)
         self.rewardText = rewardText
         self.cardTitle = cardTitle
         self.studentName = studentName
@@ -308,6 +391,10 @@ struct PointCardState: Codable, Equatable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         points = try container.decodeIfPresent(Int.self, forKey: .points) ?? 0
         showsRewardSection = try container.decodeIfPresent(Bool.self, forKey: .showsRewardSection) ?? true
+        showsStampRuleSection = try container.decodeIfPresent(Bool.self, forKey: .showsStampRuleSection) ?? true
+        stampRules = PointCardRule.normalized(
+            try container.decodeIfPresent([PointCardRule].self, forKey: .stampRules) ?? PointCardRule.defaultRules
+        )
         rewardText = try container.decodeIfPresent(String.self, forKey: .rewardText) ?? PointCardState.defaultRewardText
         cardTitle = try container.decodeIfPresent(String.self, forKey: .cardTitle) ?? PointCardState.defaultCardTitle
         studentName = try container.decodeIfPresent(String.self, forKey: .studentName) ?? PointCardState.defaultStudentName
@@ -322,6 +409,8 @@ struct PointCardState: Codable, Equatable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(points, forKey: .points)
         try container.encode(showsRewardSection, forKey: .showsRewardSection)
+        try container.encode(showsStampRuleSection, forKey: .showsStampRuleSection)
+        try container.encode(PointCardRule.normalized(stampRules), forKey: .stampRules)
         try container.encode(rewardText, forKey: .rewardText)
         try container.encode(cardTitle, forKey: .cardTitle)
         try container.encode(studentName, forKey: .studentName)

@@ -13,6 +13,8 @@ struct SettingView: View {
     @Binding var cardTitle: String
     @Binding var studentName: String
     @Binding var showsRewardSection: Bool
+    @Binding var showsStampRuleSection: Bool
+    @Binding var stampRules: [PointCardRule]
     @Binding var rewardText: String
     let maxPoints: Int
     @Binding var selectedStampItem: PhotosPickerItem?
@@ -65,6 +67,70 @@ struct SettingView: View {
                 .padding(.vertical, 4)
             }
 
+            Section("スタンプのルール") {
+                Toggle("スタンプのルールを表示", isOn: $showsStampRuleSection)
+                    .font(.system(size: 17, weight: .medium, design: .rounded))
+                    .tint(PointCardPalette.primary)
+
+                Text("最大\(PointCardRule.maxCount)件、1件\(PointCardRule.maxTextLength)文字まで。色は赤か青を選べます。")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(PointCardPalette.mutedForeground)
+
+                ForEach(Array(stampRules.enumerated()), id: \.element.id) { index, rule in
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("ルール\(index + 1)")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundStyle(PointCardPalette.foreground)
+
+                            Spacer()
+
+                            Button("削除", role: .destructive) {
+                                removeStampRule(at: index)
+                            }
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        }
+
+                        TextField("ルールを入力", text: stampRuleTextBinding(for: index), axis: .vertical)
+                            .font(.system(size: 17, weight: .medium, design: .rounded))
+                            .lineLimit(1...2)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(PointCardPalette.card)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(PointCardPalette.secondary, lineWidth: 2)
+                            )
+
+                        Picker("文字色", selection: stampRuleColorBinding(for: index)) {
+                            ForEach(PointCardRuleColor.allCases) { color in
+                                Text(color.title).tag(color)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+
+                        Text("\(stampRules[index].text.count)/\(PointCardRule.maxTextLength)文字")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(PointCardPalette.mutedForeground)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                if stampRules.count < PointCardRule.maxCount {
+                    Button {
+                        addStampRule()
+                    } label: {
+                        Label("ルールを追加", systemImage: "plus.circle.fill")
+                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    }
+                    .tint(PointCardPalette.primary)
+                }
+            }
+
             Section("スタンプ画像") {
                 VStack(spacing: 16) {
                     StampSettingPreview(
@@ -111,6 +177,36 @@ struct SettingView: View {
         }
         .navigationTitle("設定")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func stampRuleTextBinding(for index: Int) -> Binding<String> {
+        Binding(
+            get: { stampRules[index].text },
+            set: { newValue in
+                stampRules[index].text = String(newValue.prefix(PointCardRule.maxTextLength))
+            }
+        )
+    }
+
+    private func stampRuleColorBinding(for index: Int) -> Binding<PointCardRuleColor> {
+        Binding(
+            get: { stampRules[index].color },
+            set: { newValue in
+                stampRules[index].color = newValue
+            }
+        )
+    }
+
+    private func addStampRule() {
+        guard stampRules.count < PointCardRule.maxCount else { return }
+
+        stampRules.append(PointCardRule(text: "", color: .red))
+    }
+
+    private func removeStampRule(at index: Int) {
+        guard stampRules.indices.contains(index) else { return }
+
+        stampRules.remove(at: index)
     }
 }
 
@@ -276,6 +372,8 @@ private struct SettingViewPreviewContainer: View {
     @State private var cardTitle = "ポイントカード"
     @State private var studentName = "たろう"
     @State private var showsRewardSection = true
+    @State private var showsStampRuleSection = true
+    @State private var stampRules = PointCardRule.defaultRules
     @State private var rewardText = PointCardState.defaultRewardText
     @State private var selectedStampItem: PhotosPickerItem?
     @State private var stampImage: UIImage?
@@ -297,6 +395,8 @@ private struct SettingViewPreviewContainer: View {
                 cardTitle: $cardTitle,
                 studentName: $studentName,
                 showsRewardSection: $showsRewardSection,
+                showsStampRuleSection: $showsStampRuleSection,
+                stampRules: $stampRules,
                 rewardText: $rewardText,
                 maxPoints: PointCardStore.defaultMaxPoints,
                 selectedStampItem: $selectedStampItem,

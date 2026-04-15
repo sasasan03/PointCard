@@ -39,7 +39,9 @@ struct ContentView: View {
                             rewardSection
                         }
 
-                        stampRuleSection
+                        if store.showsStampRuleSection && !store.displayStampRules.isEmpty {
+                            stampRuleSection
+                        }
                     }
                     .frame(maxWidth: 560)
                     .frame(maxWidth: .infinity)
@@ -77,6 +79,8 @@ struct ContentView: View {
                             cardTitle: $store.cardTitle,
                             studentName: $store.studentName,
                             showsRewardSection: $store.showsRewardSection,
+                            showsStampRuleSection: $store.showsStampRuleSection,
+                            stampRules: $store.stampRules,
                             rewardText: $store.rewardText,
                             maxPoints: store.maxPoints,
                             selectedStampItem: $selectedStampItem,
@@ -194,14 +198,12 @@ struct ContentView: View {
                 .foregroundStyle(PointCardPalette.foreground)
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("・ご飯は３食全て残さず食べる")
-                    .foregroundStyle(.red)
-
-                Text("・友達と仲良く遊ぶ")
-                    .foregroundStyle(.red)
-
-                Text("・歯磨きをしなかった")
-                    .foregroundStyle(.blue)
+                ForEach(store.displayStampRules) { rule in
+                    Text("・\(rule.displayText)")
+                        .foregroundStyle(rule.color.displayColor)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .font(.system(size: 18, weight: .medium, design: .rounded))
             .frame(maxWidth: .infinity, alignment: .leading)
