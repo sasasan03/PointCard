@@ -101,9 +101,8 @@ struct SettingView: View {
                             .buttonStyle(.plain)
                         }
 
-                        TextField("ルールを入力", text: stampRuleTextBinding(for: index), axis: .vertical)
+                        TextField("ルールを入力", text: stampRuleTextBinding(for: index))
                             .font(.system(size: 17, weight: .medium, design: .rounded))
-                            .lineLimit(1...2)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 10)
                             .background(
@@ -193,7 +192,13 @@ struct SettingView: View {
         Binding(
             get: { stampRules[index].text },
             set: { newValue in
-                stampRules[index].text = String(newValue.prefix(PointCardRule.maxTextLength))
+                guard stampRules.indices.contains(index) else { return }
+
+                if newValue.count > PointCardRule.maxTextLength {
+                    stampRules[index].text = String(newValue.prefix(PointCardRule.maxTextLength))
+                } else {
+                    stampRules[index].text = newValue
+                }
             }
         )
     }
